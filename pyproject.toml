@@ -1,0 +1,81 @@
+[build-system]
+requires = ["poetry-core>=1.2.2"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+ignore_whitespace = true
+
+[tool.mypy]
+python_version = 3.10
+show_error_context = true
+pretty = true
+show_column_numbers = true
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+exclude = ['docs/']
+
+[tool.poetry]
+name = "volttron_config_gen"
+version = "0.1"
+description = "Parsers to generate VOLTTRON agent configurations based on haystack tags"
+authors = ["Chandrika Sivaramakrishnan <chandrika@pnnl.gov>"]
+license = "Apache License 2.0"
+readme = "README.md"
+repository = "https://github.com/volttron/intellimation_config_generators"
+homepage = "https://github.com/volttron/intellimation_config_generators"
+keywords = []
+packages = [ { include = "volttron_config_gen", from = "src" } ]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Other Audience",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+psycopg2-binary = ">=2.9.9"
+
+[tool.poetry.group.dev.dependencies]
+volttron-testing = "^0.4.0rc0"
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+mock = "^4.0.3"
+pre-commit = "^2.17.0"
+yapf = "^0.32.0"
+toml = "^0.10.2"
+mypy = "^0.942"
+coverage = "^6.3.2"
+isort = "^5.10.1"
+
+[tool.poetry.group.docs.dependencies]
+Sphinx = "^4.5.0"
+sphinx-rtd-theme = "^1.0.0"
+
+[tool.poetry.scripts]
+"config-gen-db.driver" = "volttron_config_gen.haystack.parser.driver.intellimation.config_intellimation:main"
+"config-gen-json.driver" = "volttron_config_gen.haystack.parser.driver.json.config_from_json:main"
+"config-gen-db.airsidercx" = "volttron_config_gen.haystack.parser.airsidercx.intellimation.config_intellimation:main"
+"config-gen-json.airsidercx" = "volttron_config_gen.haystack.parser.airsidercx.json.config_from_json:main"
+"config-gen-db.airsideeconomizer" = "volttron_config_gen.haystack.parser.airside_economizer.intellimation.config_intellimation:main"
+"config-gen-json.airsideeconomizer" = "volttron_config_gen.haystack.parser.airside_economizer.json.config_from_json:main"
+"config-gen-db.ilc" = "volttron_config_gen.haystack.parser.ilc.intellimation.config_intellimation:main"
+"config-gen-json.ilc" = "volttron_config_gen.haystack.parser.ilc.json.config_from_json:main"
+
+[tool.yapf]
+based_on_style = "pep8"
+spaces_before_comment = 4
+column_limit = 99
+split_before_logical_operator = true
+
+[tool.yapfignore]
+ignore_patterns = [
+    ".venv/**",
+    ".pytest_cache/**",
+    "dist/**",
+    "docs/**"
+]
