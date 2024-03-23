@@ -4,7 +4,7 @@ import re
 import sys
 import psycopg2
 
-from volttron.haystack.parser.airsidercx.config_base import \
+from volttron_config_gen.haystack.parser.airsidercx.config_base import \
     AirsideRCxConfigGenerator
 
 

@@ -2,7 +2,7 @@ import re
 import sys
 import psycopg2
 
-from volttron.haystack.parser.airside_economizer.config_base import \
+from volttron_config_gen.haystack.parser.airside_economizer.config_base import \
     AirsideEconomizerConfigGenerator
 
 

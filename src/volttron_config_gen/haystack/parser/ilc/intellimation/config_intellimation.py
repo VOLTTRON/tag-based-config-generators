@@ -4,7 +4,7 @@ import re
 import sys
 import psycopg2
 
-from volttron.haystack.parser.ilc.config_base import ILCConfigGenerator
+from volttron_config_gen.haystack.parser.ilc.config_base import ILCConfigGenerator
 
 
 class IntellimationILCConfigGenerator(ILCConfigGenerator):

@@ -4,8 +4,8 @@ import sys
 from abc import abstractmethod
 import copy
 import shutil
-from volttron.haystack.parser.utils import strip_comments
-from volttron.haystack.parser.ilc.utils.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
+from volttron_config_gen.haystack.parser.utils import strip_comments
+from volttron_config_gen.haystack.parser.ilc.utils.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
     validate_input as pairwise_validate_input, calc_column_sums as pairwise_calc_column_sums
 
 

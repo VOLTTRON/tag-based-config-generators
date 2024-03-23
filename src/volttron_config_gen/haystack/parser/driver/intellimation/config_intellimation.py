@@ -3,7 +3,7 @@ import sys
 import re
 
 import psycopg2
-from volttron.haystack.parser.driver.config_base import \
+from volttron_config_gen.haystack.parser.driver.config_base import \
     DriverConfigGenerator
 
 

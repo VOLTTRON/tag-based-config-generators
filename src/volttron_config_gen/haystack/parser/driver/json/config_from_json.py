@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 import sys
 
-from volttron.haystack.parser.driver.config_base import \
+from volttron_config_gen.haystack.parser.driver.config_base import \
     DriverConfigGenerator
 
 

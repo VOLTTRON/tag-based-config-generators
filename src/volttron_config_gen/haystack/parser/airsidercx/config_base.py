@@ -2,7 +2,7 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron.haystack.parser.utils import strip_comments
+from volttron_config_gen.haystack.parser.utils import strip_comments
 import copy
 
 # TODO - get ILC details and pull AirsideRCxConfigGenerator and

@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 import sys
 
-from volttron.haystack.parser.ilc.config_base import \
+from volttron_config_gen.haystack.parser.ilc.config_base import \
     ILCConfigGenerator
 
 

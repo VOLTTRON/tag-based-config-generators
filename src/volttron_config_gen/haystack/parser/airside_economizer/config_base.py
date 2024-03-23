@@ -3,7 +3,7 @@ import copy
 import os.path
 import sys
 from abc import abstractmethod
-from volttron.haystack.parser.utils import strip_comments
+from volttron_config_gen.haystack.parser.utils import strip_comments
 
 
 class AirsideEconomizerConfigGenerator:
