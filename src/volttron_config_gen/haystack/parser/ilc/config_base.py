@@ -44,9 +44,9 @@ class ILCConfigGenerator:
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field",
                                                      "miniDis")
-        self.building_power_point_type = self.point_meta_map["WholeBuildingPower"]
+        self.building_power_point_type = self.point_meta_map["whole_building_power"]
 
-        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != "WholeBuildingPower"]
+        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != "whole_building_power"]
         self.point_types_vav = [self.point_meta_map[x] for x in self.volttron_point_types_vav]
         # Initialize point mapping for ilc config
         self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
