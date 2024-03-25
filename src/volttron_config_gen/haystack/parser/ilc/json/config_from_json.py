@@ -69,7 +69,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
 
         point_name = ""
         if self.power_meter_id:
-            point_name = self.get_point_name(self.power_meter_id, "power_meter", "WholeBuildingPower")
+            point_name = self.get_point_name(self.power_meter_id, "power_meter", "whole_building_power")
 
         if self.unmapped_device_details.get(self.power_meter_id):
             # Could have been more than 1 point name.
