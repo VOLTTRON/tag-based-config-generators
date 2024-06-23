@@ -1,7 +1,7 @@
  {
      "metadata": {
         "connection_params": {
-                "dbname": "intellimation",
+                "dbname": "myorg_db",
                 "host": "127.0.0.1",
                 "port": 5432,
                 "user": "postgres",
@@ -10,11 +10,11 @@
         "equip_table": "equipment",
         "point_table": "points"
         },
-     "site_id": "r:intellimation.dc_dgs.dcps.brookland_ms",
+     "site_id": "r:myorg.dc_dgs.dcps.test_building",
      # optional. if not provided will be derived from site_id.split('.')[-2]
      #"campus": "dcps",
      # optional. if not provided will be derived from site_id.split('.')[-1]
-     #"building": "brookland_ms",
+     #"building": "test_building",
 
      # metadata value to indentify the specific points and hence its name in this setup
      "point_meta_map": {

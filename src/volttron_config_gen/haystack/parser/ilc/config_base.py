@@ -45,9 +45,9 @@ class ILCConfigGenerator:
         self.point_default_map = self.config_dict.get("point_default_map", dict())
 
         self.power_meter_id = None
-        self.building_power_point_type = self.point_meta_map["whole_building_power"]
+        self.building_power_point_type = self.point_meta_map["WholeBuildingPower"]
 
-        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != "whole_building_power"]
+        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != "WholeBuildingPower"]
         self.point_types_vav = [self.point_meta_map[x] for x in self.volttron_point_types_vav]
         # Initialize point mapping for ilc config
         self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
@@ -196,7 +196,7 @@ class ILCConfigGenerator:
             if not self.building_power_point:
                 self.building_power_point = self.get_building_power_point()
                 if not self.building_power_point:
-                    self.building_power_point = self.point_default_map.get("whole_building_power", "")
+                    self.building_power_point = self.point_default_map.get("WholeBuildingPower", "")
 
             if not self.building_power_point and \
                     self.power_meter_id and \
