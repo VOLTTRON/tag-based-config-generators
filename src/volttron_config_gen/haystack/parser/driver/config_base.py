@@ -112,13 +112,12 @@ class DriverConfigGenerator:
                     json.dump(result_dict, outfile, indent=4)
 
         try:
-            self.get_building_meter()
+            self.power_meter_id = self.get_building_meter()
+            meter_name, result_dict = self.generate_meter_config()
+            with open(f"{self.output_configs}/{meter_name}.json", 'w') as outfile:
+                json.dump(result_dict, outfile, indent=4)
         except ValueError as e:
-            return {"building_power_meter": {"error": f"Unable to locate building power meter: Error: {e}"}}
-
-        meter_name, result_dict = self.generate_meter_config()
-        with open(f"{self.output_configs}/{meter_name}.json", 'w') as outfile:
-            json.dump(result_dict, outfile, indent=4)
+            self.unmapped_device_details["building_power_meter"] = {"error": f"{e}"}
 
         # If unmapped devices exists, write additional unmapped_devices.txt that gives more info to user to map manually
         if self.unmapped_device_details:
