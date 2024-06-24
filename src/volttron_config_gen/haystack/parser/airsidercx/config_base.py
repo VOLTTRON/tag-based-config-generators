@@ -39,6 +39,8 @@ class AirsideRCxConfigGenerator:
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field",
                                                      "miniDis")
+        self.point_default_map = self.config_dict.get("point_default_map", dict())
+
         # Initialize point mapping for airsidercx config
         self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
         self.volttron_point_types_ahu = ["fan_status", "duct_stcpr", "duct_stcpr_stpt",
@@ -104,9 +106,26 @@ class AirsideRCxConfigGenerator:
         else:
             iterator = ahu_and_vavs
         for ahu_id, vavs in iterator:
+            if not ahu_id and vavs:
+                # ahu without vavs and vav without ahuref are not applicable for AirsideRCx
+                self.unmapped_device_details["unmapped_vavs"] = {
+                    "type": "vav",
+                    "error": f"Warning. Found vavs without ahu mapping. Ignoring vavs. {vavs}"}
+                continue
+            if ahu_id and not vavs:
+                # ahu without vavs and vav without ahuref are not applicable for AirsideRCx
+                self.unmapped_device_details[ahu_id] = {
+                    "type": "ahu",
+                    "error": f"Warning. AHU without VAVs. Ignoring AHU"}
+                continue
+
+
             ahu_name, result_dict = self.generate_ahu_configs(ahu_id, vavs)
             if not result_dict or not ahu_name:
-                continue  # no valid configs or no valid ahu ref. move to the next ahu
+                # no valid configs or no valid ahu ref. move to the next ahu
+                # we don't care about unmapped vavs as this agent has mandatory
+                # ahu points
+                continue
             config_file_name = os.path.abspath(f"{self.output_configs}/{ahu_name}.json")
             with open(config_file_name, 'w') as f:
                 json.dump(result_dict, f, indent=4)
@@ -141,6 +160,9 @@ class AirsideRCxConfigGenerator:
         ahu_point_name_map = dict()
         for volttron_point_type in self.volttron_point_types_ahu:
             point_name = self.get_point_name(ahu_id, "ahu", volttron_point_type)
+            if not point_name:
+                # see if there is a default
+                point_name = self.point_default_map.get(volttron_point_type, "")
             point_mapping[volttron_point_type] = point_name
 
         # varify if mandatory ahu points are there
@@ -148,7 +170,7 @@ class AirsideRCxConfigGenerator:
         if not point_mapping.get("fan_status") and not point_mapping.get("fan_speedcmd"):
             # Cannot proceed. Add detals to unmapped devices dict and return None
             self.unmapped_device_details[ahu_id] = {"type": "ahu",
-                                                    "error": "Neither fan_status nor fan_speed point is available",
+                                                    "error": "Neither fan_status nor fan_speedcmd point is available",
                                                     "topic_name": self.equip_id_point_topic_map.get(ahu_id)}
 
             return ahu, None
@@ -170,10 +192,12 @@ class AirsideRCxConfigGenerator:
             # get vav point name
             for volttron_point_type in self.volttron_point_types_vav:
                 point_name = self.get_point_name(vav_id, "vav", volttron_point_type)
+                if not point_name:
+                    # see if there is a default
+                    point_name = self.point_default_map.get(volttron_point_type, "")
                 if point_name:
                     point_mapping[volttron_point_type].add(point_name)
 
-        # convert set to list before returning i.e. written to file
         for volttron_point_type in self.volttron_point_types_vav:
             if not point_mapping[volttron_point_type]:
                 point_mapping[volttron_point_type] = ""
@@ -188,8 +212,8 @@ class AirsideRCxConfigGenerator:
                             # max two(one for each interested point) topic names for each vav available
                             self.unmapped_device_details[ahu_id]["topic_name"][vav_id] = \
                                 self.equip_id_point_topic_map[vav_id]
-
             elif len(point_mapping[volttron_point_type]) > 1:
+                # convert set to list before returning i.e. written to file
                 point_mapping[volttron_point_type] = list(point_mapping[volttron_point_type])
             else:
                 point_mapping[volttron_point_type] = point_mapping[volttron_point_type].pop()

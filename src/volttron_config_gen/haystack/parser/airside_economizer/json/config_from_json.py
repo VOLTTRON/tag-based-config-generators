@@ -68,8 +68,6 @@ class JsonAirsideEconomizerConfigGenerator(AirsideEconomizerConfigGenerator):
             # Load it once and use it from map from next call
             rows = self.points_json['rows']
             for _d in rows:
-                if _d["id"] == "r:@intellimation.dc_dgs.dcps.anacostia_hs.eru-d1_s-wing.onrly1":
-                    print("r:@intellimation.dc_dgs.dcps.anacostia_hs.eru-d1_s-wing.onrly1")
                 if not _d.get(self.point_meta_field):
                     # if there is no point type information this point is
                     # not useful to us skip

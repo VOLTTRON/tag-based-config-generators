@@ -37,6 +37,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
         Loop through equip json once and grab interested device ids so rest of the code need not loop through it again
         Code looks for site meter and vavs
         """
+        e = None
         rows = self.equip_json['rows']
         for _d in rows:
             if self.configured_power_meter_id:
@@ -44,7 +45,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
                     if self.power_meter_id is None:
                         self.power_meter_id = _d['id']
                     else:
-                        raise ValueError(
+                        e = ValueError(
                             f"More than one equipment found with the id {self.configured_power_meter_id}. Please "
                             f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
                             f"building power meter")
@@ -53,12 +54,15 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
                     if self.power_meter_id is None:
                         self.power_meter_id = _d['id']
                     else:
-                        raise ValueError(f"More than one equipment found with the tag {self.power_meter_tag}. Please "
-                                         f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
-                                         f"building power meter")
+                        e = ValueError(f"More than one equipment found with the tag {self.power_meter_tag}. Please "
+                                       f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
+                                       f"building power meter")
 
             if "vav" in _d:  # if it is tagged as vav, get vav and ahu it is associated with
                 self.vav_dict[_d["id"]] = _d.get("ahuRef", "")
+
+        if e:
+            raise e
 
     def get_building_power_meter(self):
         if not self.power_meter_id:
@@ -69,7 +73,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
 
         point_name = ""
         if self.power_meter_id:
-            point_name = self.get_point_name(self.power_meter_id, "power_meter", "whole_building_power")
+            point_name = self.get_point_name(self.power_meter_id, "power_meter", "WholeBuildingPower")
 
         if self.unmapped_device_details.get(self.power_meter_id):
             # Could have been more than 1 point name.
@@ -78,6 +82,8 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
             return point_name
 
     def get_vavs_with_ahuref(self):
+        if not self.vav_dict:
+            self._populate_equip_details()
         return self.vav_dict
 
     # Should be overridden for different sites if parsing logic is different
