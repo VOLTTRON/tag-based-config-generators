@@ -4,14 +4,14 @@ import sys
 from abc import abstractmethod
 import copy
 import shutil
-from volttron_config_gen.haystack.parser.utils import strip_comments
-from volttron_config_gen.haystack.parser.ilc.utils.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
+from volttron.config_gen.utils import strip_comments
+from volttron.config_gen.utils.ilc.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
     validate_input as pairwise_validate_input, calc_column_sums as pairwise_calc_column_sums
 
 
 class ILCConfigGenerator:
     """
-    Base class that parses haystack tags to generate
+    Base class that parses haystack3 tags to generate
     ILC agent configurations based on a configuration templates
     """
 
@@ -65,7 +65,7 @@ class ILCConfigGenerator:
         if not self.device_type:
             raise ValueError("Missing device_type parameter under config_template")
 
-        self.pairwise_path = os.path.join(os.path.dirname(__file__),
+        self.pairwise_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils/ilc",
                                           f"pairwise_criteria_{self.device_type}.json")
         if not os.path.exists(self.pairwise_path):
             raise ValueError(f"Given device type is {self.device_type}. But unable to find corresponding "
@@ -115,7 +115,7 @@ class ILCConfigGenerator:
 
         self.ilc_agent_vip = self.config_dict.get("ilc_agent_vip", "platform.ilc")
 
-        # Initialize map of haystack id and nf device name
+        # Initialize map of haystack3 id and nf device name
         self.equip_id_point_map = dict()
         self.equip_id_device_id_map = dict()
         self.config_metadata_dict = dict()

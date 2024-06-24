@@ -1,7 +1,7 @@
  {
      "metadata": {
-        "equip_json": "/home/chandrika/volttron/tag-based-config-generators/sample_json/test_building_equip_haystack.json",
-        "points_json": "/home/chandrika/volttron/tag-based-config-generators/sample_json/test_building_points_haystack.json"
+        "equip_json": "/home/chandrika/volttron/tag-based-config-generators/sample_haystack_json/test_building_equip_haystack.json",
+        "points_json": "/home/chandrika/volttron/tag-based-config-generators/sample_haystack_json/test_building_points_haystack.json"
         },
      # If provided query will be filtered using this condition
      #"site_id": "r:@myorg.dc_dgs.dcps.test_building",

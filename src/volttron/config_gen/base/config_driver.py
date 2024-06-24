@@ -2,12 +2,12 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron_config_gen.haystack.parser.utils import strip_comments
+from volttron.config_gen.utils import strip_comments
 
 
 class DriverConfigGenerator:
     """
-    Base class that parses haystack tags to generate
+    Base class that parses haystack3 tags to generate
     platform driver configuration based on a configuration template
     """
 

@@ -2,14 +2,14 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron_config_gen.haystack.parser.utils import strip_comments
+from volttron.config_gen.utils import strip_comments
 import copy
 
 # TODO - get ILC details and pull AirsideRCxConfigGenerator and
 #  into 1 base class DriverConfigGenerator
 class AirsideRCxConfigGenerator:
     """
-    Base class that parses haystack tags to generate
+    Base class that parses haystack3 tags to generate
     AirsideRCx agent configuration based on a configuration template
     """
 
@@ -84,7 +84,7 @@ class AirsideRCxConfigGenerator:
 
         self.agent_vip_prefix = self.config_dict.get("agent_vip_prefix", "airside")
 
-        # Initialize map of haystack id and nf device name
+        # Initialize map of haystack3 id and nf device name
         self.equip_id_point_map = dict()
         self.equip_id_device_id_map = dict()
 

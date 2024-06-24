@@ -4,16 +4,16 @@ import re
 from collections import defaultdict
 import sys
 
-from volttron_config_gen.haystack.parser.driver.config_base import \
+from volttron.config_gen.base.config_driver import \
     DriverConfigGenerator
 
 
 class JsonDriverConfigGenerator(DriverConfigGenerator):
     """
-    Class that parses haystack tags from two json files - one containing tags
-    for equipments/devices and another containing haystack tags for points
+    Class that parses haystack3 tags from two json files - one containing tags
+    for equipments/devices and another containing haystack3 tags for points
     This is a reference implementation to show case driver config generation
-    based on haystack tags. This class can be extended and customized for
+    based on haystack3 tags. This class can be extended and customized for
     specific device types and configurations
     For example, override self.driver_config_template and
     self.generate_config_from_template() if you want to generate
@@ -22,7 +22,7 @@ class JsonDriverConfigGenerator(DriverConfigGenerator):
 
     def __init__(self, config):
         super().__init__(config)
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         try:
             with open(metadata.get("equip_json"), "r") as f:
@@ -31,7 +31,7 @@ class JsonDriverConfigGenerator(DriverConfigGenerator):
                 self.points_json = json.load(f)
         except Exception:
             raise
-        # Initialize map of haystack id and nf device name
+        # Initialize map of haystack3 id and nf device name
         self.equip_id_device_name_map = dict()
         self.equip_id_device_id_map = dict()
         self.ahu_name_pattern = re.compile(r"\[\d+\]")

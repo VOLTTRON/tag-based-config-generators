@@ -1,25 +1,22 @@
-import copy
 import json
-import re
-from collections import defaultdict
 import sys
 
-from volttron_config_gen.haystack.parser.ilc.config_base import \
+from volttron.config_gen.base.config_ilc import \
     ILCConfigGenerator
 
 
 class JsonILCConfigGenerator(ILCConfigGenerator):
     """
-    Class that parses haystack tags from two json files - one containing tags
-    for equipments/devices and another containing haystack tags for points
+    Class that parses haystack3 tags from two json files - one containing tags
+    for equipments/devices and another containing haystack3 tags for points
     This is a reference implementation is to showcase ILC agent configurations
-    generation based on haystack tags. This class can be extended and
+    generation based on haystack3 tags. This class can be extended and
     customized for specific device types and configurations
     """
 
     def __init__(self, config):
         super().__init__(config)
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         try:
             with open(metadata.get("equip_json"), "r") as f:

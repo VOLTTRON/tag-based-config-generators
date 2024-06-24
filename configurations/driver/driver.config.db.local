@@ -26,7 +26,7 @@
     },
     "interval": "60"
   },
-  "site_id": "r:intellimation.dc_dgs.dcps.brookland_ms",
+  "site_id": "r:myorg.dc_dgs.dcps.test_building",
   "campus": "dcps",
   "topic_prefix": "devices/WDC/Brookland"
 

@@ -1,7 +1,7 @@
  {
      "metadata": {
         "connection_params": {
-                "dbname": "intellimation",
+                "dbname": "myorg_db",
                 "host": "127.0.0.1",
                 "port": 5432,
                 "user": "postgres",
@@ -10,13 +10,13 @@
         "equip_table": "equipment",
         "point_table": "points"
         },
-     "site_id": "r:intellimation.dc_dgs.dcps.brookland_ms",
+     "site_id": "r:myorg.dc_dgs.dcps.test_building",
 
      # optional. if not provided will be derived from site_id.split('.')[-2]
      #"campus": "dcps",
 
      # optional. if not provided will be derived from site_id.split('.')[-1]
-     #"building": "anacostia_hs",
+     #"building": "test_building",
 
      ######### Configuration to identify whole building power meter. This required for ILC.  ##################
      ######### SHOULD MATCH the device name used by driver so that topic names match. ###########
@@ -34,7 +34,7 @@
      ##### 2. Use building power meter id. If there are multiple entities with the tag "siteMeter" then provide the
      ##### id of the power meter to use for ILC. id should exists in the tagging data store
 
-     "power_meter_id": "r:@intellimation.dc_dgs.dcps.anacostia_hs.electric_meter_-_building",
+     "power_meter_id": "r:@myorg.dc_dgs.dcps.test_building.electric_meter_-_building",
 
      ##### 3. When there is no power meter and agent is used to post data as powermeter - i.e. simulated power meter
      ##### specify both the "building_power_meter" and "building_power_point" attributes. In this case, config
@@ -49,7 +49,7 @@
             "WholeBuildingPower": "s:Mtr_kWh",
             "ZoneCoolingTemperatureSetPoint":  "s:EffZnTempSp",
             "MinimumAirFlow":"s:MinAirFlowSp",
-            #  "ZoneAirFlowSetpoint": "s:SaFlow", # Not used for anacostia. Derived as ZoneAirFlow*MaxAirFlow/100
+            #  "ZoneAirFlowSetpoint": "s:SaFlow", # Could be derived as ZoneAirFlow*MaxAirFlow/100
             "ZoneAirFlow": "s:SaFlow",
             "MaxAirFlow": "s:MaxAirFlowSP",
             "ZoneTemperature": "s:ZNTemp",
