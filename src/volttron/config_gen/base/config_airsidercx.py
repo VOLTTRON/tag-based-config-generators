@@ -2,15 +2,13 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron.config_gen.utils import strip_comments
 import copy
+from volttron.config_gen.utils import strip_comments
 
-# TODO - get ILC details and pull AirsideRCxConfigGenerator and
-#  into 1 base class DriverConfigGenerator
+
 class AirsideRCxConfigGenerator:
     """
-    Base class that parses haystack3 tags to generate
-    AirsideRCx agent configuration based on a configuration template
+    Base class to generate AirsideRCx agent configuration based on a configuration template
     """
 
     def __init__(self, config):
@@ -84,7 +82,7 @@ class AirsideRCxConfigGenerator:
 
         self.agent_vip_prefix = self.config_dict.get("agent_vip_prefix", "airside")
 
-        # Initialize map of haystack3 id and nf device name
+        # Initialize map of semantic equip id and nf device name
         self.equip_id_point_map = dict()
         self.equip_id_device_id_map = dict()
 
@@ -157,7 +155,6 @@ class AirsideRCxConfigGenerator:
         subdevices = final_config["device"]["unit"][ahu]["subdevices"] = list()
         point_mapping = final_config["arguments"]["point_mapping"]
         # Get ahu point details
-        ahu_point_name_map = dict()
         for volttron_point_type in self.volttron_point_types_ahu:
             point_name = self.get_point_name(ahu_id, "ahu", volttron_point_type)
             if not point_name:
@@ -199,6 +196,7 @@ class AirsideRCxConfigGenerator:
                     point_mapping[volttron_point_type].add(point_name)
 
         for volttron_point_type in self.volttron_point_types_vav:
+            # if no points were found, check if the missing point is mandatory for AirsideRCx agent
             if not point_mapping[volttron_point_type]:
                 point_mapping[volttron_point_type] = ""
 

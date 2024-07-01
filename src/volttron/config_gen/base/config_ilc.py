@@ -11,7 +11,7 @@ from volttron.config_gen.utils.ilc.validate_pairwise import extract_criteria as 
 
 class ILCConfigGenerator:
     """
-    Base class that parses haystack3 tags to generate
+    Base class that parses semantic tags to generate
     ILC agent configurations based on a configuration templates
     """
 
@@ -54,8 +54,6 @@ class ILCConfigGenerator:
 
         # use this dict to give additional details for user to help manually find the issue
         self.unmapped_device_details = dict()
-        # For all unmapped devices add topic name details to this variable for error reporting
-        self.equip_id_point_topic_map = dict()
 
         config_template = self.config_dict.get("config_template")
         if not config_template:
@@ -188,7 +186,7 @@ class ILCConfigGenerator:
                         "type": "building power meter",
                         "error": "Unable to locate building power meter"}
             except ValueError as e:
-                # more than one power meter found either using siteMeter tag or with configured power meter id
+                # Unable to uniquely identify power meter using siteMeter tag or with configured power meter id
                 self.unmapped_device_details["building_power_meter"] = {
                     "type": "building power meter",
                     "error": f"Unable to locate building power meter: Error: {e}"}
@@ -232,7 +230,7 @@ class ILCConfigGenerator:
     def generate_control_config(self):
         control_config = dict()
 
-        vav_details = self.get_vavs_with_ahuref()
+        vav_details = self.get_vav_ahu_map()
         if isinstance(vav_details, dict):
             iterator = vav_details.items()
         else:
@@ -308,7 +306,7 @@ class ILCConfigGenerator:
 
         criteria_config = dict()
 
-        vav_details = self.get_vavs_with_ahuref()
+        vav_details = self.get_vav_ahu_map()
         if isinstance(vav_details, dict):
             iterator = vav_details.items()
         else:
@@ -417,7 +415,7 @@ class ILCConfigGenerator:
         pass
 
     @abstractmethod
-    def get_vavs_with_ahuref(self):
+    def get_vav_ahu_map(self):
         """
         Should return vavs with its corresponding ahu
         :return: list of tuples with the format [(va1, ahu1), (vav2,ahu1),...]

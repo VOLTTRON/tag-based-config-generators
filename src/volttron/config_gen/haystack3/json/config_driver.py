@@ -37,6 +37,8 @@ class JsonDriverConfigGenerator(DriverConfigGenerator):
         self.ahu_name_pattern = re.compile(r"\[\d+\]")
         self.equip_id_topic_name_map = dict()
         self.ahu_dict = None
+        # List of all vav equip ids
+        self.vav_list = []
 
     def _populate_equip_details(self):
         rows = self.equip_json['rows']

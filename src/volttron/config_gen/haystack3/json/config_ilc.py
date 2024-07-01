@@ -28,6 +28,8 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
 
         # all vav equip ids and its corresponding ahu ids
         self.vav_dict = dict()
+        # For all unmapped devices add topic name details to this variable for error reporting
+        self.equip_id_point_topic_map = dict()
 
     def _populate_equip_details(self):
         """
@@ -78,7 +80,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
         else:
             return point_name
 
-    def get_vavs_with_ahuref(self):
+    def get_vav_ahu_map(self):
         if not self.vav_dict:
             self._populate_equip_details()
         return self.vav_dict
