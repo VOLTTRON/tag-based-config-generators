@@ -1,22 +1,19 @@
-import copy
-import json
-import re
 import sys
 import psycopg2
 
-from volttron_config_gen.haystack.parser.ilc.config_base import ILCConfigGenerator
+from volttron.config_gen.base.config_ilc import ILCConfigGenerator
 
 
 class IntellimationILCConfigGenerator(ILCConfigGenerator):
     """
-    class that parses haystack tags from a postgres db to generate
+    class that parses haystack3 tags from a postgres db to generate
     ILC configs
     """
 
     def __init__(self, config):
         super().__init__(config)
 
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         connect_params = metadata.get("connection_params")
         if "timescale_dialect" in metadata:
@@ -29,6 +26,8 @@ class IntellimationILCConfigGenerator(ILCConfigGenerator):
         self.connection.autocommit = True
         self.equip_table = metadata.get("equip_table")
         self.point_table = metadata.get("point_table")
+        # For all unmapped devices add topic name details to this variable for error reporting
+        self.equip_id_point_topic_map = dict()
         self.vavs_and_ahuref = list()
 
     def get_building_power_meter(self):
@@ -69,7 +68,7 @@ class IntellimationILCConfigGenerator(ILCConfigGenerator):
         else:
             return point_name
 
-    def get_vavs_with_ahuref(self):
+    def get_vav_ahu_map(self):
         if not self.vavs_and_ahuref:
             query = f"SELECT tags->>'id', tags->>'ahuRef'  \
             FROM {self.equip_table} \

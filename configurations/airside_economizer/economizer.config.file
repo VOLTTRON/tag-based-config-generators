@@ -1,7 +1,7 @@
  {
      "metadata": {
-        "equip_json": "/home/chandrika/volttron/tag-based-config-generators/sample_json/test_building_equip_haystack.json",
-        "points_json": "/home/chandrika/volttron/tag-based-config-generators/sample_json/test_building_points_haystack.json"
+        "equip_json": "/home/chandrika/volttron/tag-based-config-generators/sample_haystack_json/test_building_equip_haystack.json",
+        "points_json": "/home/chandrika/volttron/tag-based-config-generators/sample_haystack_json/test_building_points_haystack.json"
         },
 
      # Make sure this site_id or campus&building information matches what is used for platform.driver

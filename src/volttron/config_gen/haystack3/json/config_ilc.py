@@ -1,25 +1,22 @@
-import copy
 import json
-import re
-from collections import defaultdict
 import sys
 
-from volttron_config_gen.haystack.parser.ilc.config_base import \
+from volttron.config_gen.base.config_ilc import \
     ILCConfigGenerator
 
 
 class JsonILCConfigGenerator(ILCConfigGenerator):
     """
-    Class that parses haystack tags from two json files - one containing tags
-    for equipments/devices and another containing haystack tags for points
+    Class that parses haystack3 tags from two json files - one containing tags
+    for equipments/devices and another containing haystack3 tags for points
     This is a reference implementation is to showcase ILC agent configurations
-    generation based on haystack tags. This class can be extended and
+    generation based on haystack3 tags. This class can be extended and
     customized for specific device types and configurations
     """
 
     def __init__(self, config):
         super().__init__(config)
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         try:
             with open(metadata.get("equip_json"), "r") as f:
@@ -31,6 +28,8 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
 
         # all vav equip ids and its corresponding ahu ids
         self.vav_dict = dict()
+        # For all unmapped devices add topic name details to this variable for error reporting
+        self.equip_id_point_topic_map = dict()
 
     def _populate_equip_details(self):
         """
@@ -81,7 +80,7 @@ class JsonILCConfigGenerator(ILCConfigGenerator):
         else:
             return point_name
 
-    def get_vavs_with_ahuref(self):
+    def get_vav_ahu_map(self):
         if not self.vav_dict:
             self._populate_equip_details()
         return self.vav_dict

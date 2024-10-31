@@ -3,12 +3,12 @@ import copy
 import os.path
 import sys
 from abc import abstractmethod
-from volttron_config_gen.haystack.parser.utils import strip_comments
+from volttron.config_gen.utils import strip_comments
 
 
 class AirsideEconomizerConfigGenerator:
     """
-    Base class that parses haystack tags to generate
+    Base class that parses semantic tags to generate
     Airside Economizer agent configuration based on a configuration template
     """
     def __init__(self, config):
@@ -25,7 +25,7 @@ class AirsideEconomizerConfigGenerator:
         self.building = self.config_dict.get("building")
         self.campus = self.config_dict.get("campus")
         if not self.building and self.site_id:
-            self.building = self.site_id.split(".")[-1]
+            self.building = self.get_name_from_id(self.site_id)
         if not self.campus and self.site_id:
             self.campus = self.site_id.split(".")[-2]
 
@@ -59,15 +59,6 @@ class AirsideEconomizerConfigGenerator:
 
         self.agent_vip_prefix = self.config_dict.get("agent_vip_prefix", "economizer")
 
-        # # Airside economizer point name to metadata(miniDis/Dis field) map
-        # "supply_fan_status": "s:SaFanCmd",  # supply fan run command
-        # "outdoor_air_temperature": "s:OaTemp",
-        # "return_air_temperature": "s:RaTemp",
-        # "mixed_air_temperature": "s:MATemp",
-        # "outdoor_damper_signal": "s:OaDmprCmd",
-        # # if 'chilled water valve pos' is not there try 'valve cmd'
-        # "cool_call": ["s:ChwVlvPos", "s:ChwVlvCmd"],
-        # "supply_fan_speed": "s:SaFanSpdCmd"
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field", "miniDis")
         self.point_default_map = self.config_dict.get("point_default_map", dict())
@@ -87,11 +78,11 @@ class AirsideEconomizerConfigGenerator:
         results = self.get_ahus()
 
         for ahu in results:
-            if isinstance(ahu, str):
-                ahu_id = ahu
-            else:
+            if isinstance(ahu, list):
                 # results from db. list of rows, where each element in list is list of columns queried
                 ahu_id = ahu[0]
+            else:
+                ahu_id = ahu
             ahu_name, result_dict = self.generate_ahu_configs(ahu_id)
 
             if result_dict:
@@ -118,7 +109,7 @@ class AirsideEconomizerConfigGenerator:
 
     def generate_ahu_configs(self, ahu_id):
         final_config = copy.deepcopy(self.config_template)
-        ahu = ahu_id.split(".")[-1]
+        ahu = self.get_name_from_id(ahu_id)
         final_config["device"]["unit"] = {}
         final_config["device"]["unit"][ahu] = {}
         final_config["device"]["unit"][ahu]["subdevices"] = list()
@@ -144,4 +135,8 @@ class AirsideEconomizerConfigGenerator:
 
     @abstractmethod
     def get_point_name(self, equip_id, equip_type, point_key):
+        pass
+
+    @abstractmethod
+    def get_name_from_id(self, id):
         pass

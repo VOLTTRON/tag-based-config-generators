@@ -2,13 +2,14 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron_config_gen.haystack.parser.utils import strip_comments
+from volttron.config_gen.utils import strip_comments
 
 
 class DriverConfigGenerator:
     """
-    Base class that parses haystack tags to generate
-    platform driver configuration based on a configuration template
+    Base class to generate platform driver configuration based on a configuration template.
+    Generates configuration templates for Air Handling Units (AHU, DOAS, RTU) and associated VAVs, and
+    building electric meter
     """
 
     def __init__(self, config):
@@ -42,11 +43,6 @@ class DriverConfigGenerator:
         self.ahu_topic_pattern = topic_prefix + "{}"
         self.meter_topic_pattern = topic_prefix + "{}"
         self.vav_topic_pattern = topic_prefix + "{ahu}/{vav}"
-
-        # List of all ahus equip ids
-        self.ahu_list = []
-        # List of all vav equip ids
-        self.vav_list = []
 
         self.power_meter_tag = 'siteMeter'
         self.configured_power_meter_id = self.config_dict.get("power_meter_id", "")
@@ -145,16 +141,17 @@ class DriverConfigGenerator:
     def generate_ahu_configs(self, ahu_id, vavs):
         final_mapper = dict()
         final_mapper[self.driver_vip] = []
-        ahu = ""
-        ahu = self.get_name_from_id(ahu_id)
+        ahu_name = ""
+
         # First create the config for the ahu
-        topic = self.ahu_topic_pattern.format(ahu)
         if ahu_id:
+            ahu_name = self.get_name_from_id(ahu_id)
+            topic = self.ahu_topic_pattern.format(ahu_name)
             # replace right variables in driver_config_template
             driver_config = self.generate_config_from_template(ahu_id, "ahu")
             if driver_config:
                 final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
-            topic_pattern = self.vav_topic_pattern.format(ahu=ahu, vav='{vav}')  # fill ahu, leave vav variable
+            topic_pattern = self.vav_topic_pattern.format(ahu=ahu_name, vav='{vav}')  # fill ahu, leave vav variable
         else:
             topic_pattern = self.vav_topic_pattern.replace("{ahu}/", "")  # ahu
         # Now loop through and do the same for all vavs
@@ -165,7 +162,7 @@ class DriverConfigGenerator:
             driver_config = self.generate_config_from_template(vav_id, "vav")
             if driver_config:
                 final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
-        return ahu, final_mapper
+        return ahu_name, final_mapper
 
     @abstractmethod
     def generate_config_from_template(self, equip_id, equip_type):

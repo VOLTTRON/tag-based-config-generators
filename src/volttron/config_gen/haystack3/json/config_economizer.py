@@ -1,25 +1,22 @@
-import copy
 import json
-import re
-from collections import defaultdict
 import sys
 
-from volttron_config_gen.haystack.parser.airside_economizer.config_base import \
+from volttron.config_gen.base.config_economizer import \
     AirsideEconomizerConfigGenerator
 
 
 class JsonAirsideEconomizerConfigGenerator(AirsideEconomizerConfigGenerator):
     """
-    Class that parses haystack tags from two jsonfile files - one containing tags
-    for equipments/devices and another containing haystack tags for points
+    Class that parses haystack3 tags from two jsonfile files - one containing tags
+    for equipments/devices and another containing haystack3 tags for points
     This is a reference implementation to show case airsidercx agent config
-    generation based on haystack tags. This class can be extended and
+    generation based on haystack3 tags. This class can be extended and
     customized for specific device types and configurations
     """
 
     def __init__(self, config):
         super().__init__(config)
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         try:
             with open(metadata.get("equip_json"), "r") as f:
@@ -28,7 +25,7 @@ class JsonAirsideEconomizerConfigGenerator(AirsideEconomizerConfigGenerator):
                 self.points_json = json.load(f)
         except Exception:
             raise
-        # Initialize map of haystack id and nf device name
+        # Initialize map of haystack3 id and nf device name
         self.equip_id_point_map = dict()
         self.equip_id_device_id_map = dict()
         # List of all ahus equip ids

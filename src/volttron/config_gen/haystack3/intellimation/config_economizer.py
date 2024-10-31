@@ -1,20 +1,19 @@
-import re
 import sys
 import psycopg2
 
-from volttron_config_gen.haystack.parser.airside_economizer.config_base import \
+from volttron.config_gen.base.config_economizer import \
     AirsideEconomizerConfigGenerator
 
 
 class IntellimationAirsideEconomizerConfigGenerator(AirsideEconomizerConfigGenerator):
     """
-    class that parses haystack tags from a postgres db to generate
+    class that parses haystack3 tags from a postgres db to generate
     platform driver configuration for normal framework driver type
     """
     def __init__(self, config):
         super().__init__(config)
 
-        # get details on haystack metadata
+        # get details on haystack3 metadata
         metadata = self.config_dict.get("metadata")
         connect_params = metadata.get("connection_params")
         if "timescale_dialect" in metadata:
