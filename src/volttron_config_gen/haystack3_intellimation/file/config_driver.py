@@ -4,11 +4,10 @@ import re
 from collections import defaultdict
 import sys
 
-from volttron.config_gen.base.config_driver import \
-    DriverConfigGenerator
+from volttron_config_gen.base.config_driver import BaseConfigGenerator
 
 
-class JsonDriverConfigGenerator(DriverConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses haystack3 tags from two json files - one containing tags
     for equipments/devices and another containing haystack3 tags for points
@@ -77,10 +76,9 @@ class JsonDriverConfigGenerator(DriverConfigGenerator):
                     self.unmapped_device_details[_d["id"]] = {"type": "vav", "error": "Unable to find ahuRef"}
                 self.vav_list.append(_d["id"])
             elif "ahu" in _d:  # if it is tagged as ahu
-                self.ahu_list.append(_d["id"])
-        if not set(self.ahu_list).issubset(set(self.ahu_dict)):
-            for a in set(self.ahu_list) - set(self.ahu_dict):
-                self.ahu_dict[a] = []
+               if not self.ahu_dict.get(_d["id"]):
+                   self.ahu_dict[_d["id"]] = []
+
 
     def get_ahu_and_vavs(self):
         if not self.ahu_dict:
@@ -113,7 +111,7 @@ class JsonDriverConfigGenerator(DriverConfigGenerator):
                     if _d["equipRef"] in self.unmapped_device_details:
                         # grab the topic_name to shed some light into ahu mapping
                         self.unmapped_device_details[_d["equipRef"]]["topic_name"] = _d["topic_name"]
-                elif _d["equipRef"] in self.ahu_list or _d["equipRef"] == self.power_meter_id:
+                elif _d["equipRef"] in self.ahu_dict or _d["equipRef"] == self.power_meter_id:
                     self.equip_id_topic_name_map[_d["equipRef"]] = _d["topic_name"]
                     equip_type = "meter" if _d["equipRef"] == self.power_meter_id else "ahu"
                     try:
@@ -183,7 +181,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = JsonDriverConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

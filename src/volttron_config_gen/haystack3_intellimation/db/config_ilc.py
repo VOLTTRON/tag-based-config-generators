@@ -1,10 +1,10 @@
 import sys
 import psycopg2
 
-from volttron.config_gen.base.config_ilc import ILCConfigGenerator
+from volttron_config_gen.base.config_ilc import BaseConfigGenerator
 
 
-class IntellimationILCConfigGenerator(ILCConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     class that parses haystack3 tags from a postgres db to generate
     ILC configs
@@ -141,7 +141,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = IntellimationILCConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

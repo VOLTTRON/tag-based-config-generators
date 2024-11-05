@@ -1,11 +1,11 @@
 import math
 import sys
 
-from volttron.config_gen.base.config_ilc import ILCConfigGenerator
-from volttron.config_gen.utils.edo_utils import *
+from volttron_config_gen.base.config_ilc import BaseConfigGenerator
+from volttron_config_gen.utils.edo_utils import *
 
 
-class EdoILCConfigGenerator(ILCConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     class that parses semantic tags from a postgres db to generate
     ILC configs
@@ -102,7 +102,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = EdoILCConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

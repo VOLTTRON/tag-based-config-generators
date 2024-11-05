@@ -1,11 +1,10 @@
 import json
 import sys
 
-from volttron.config_gen.base.config_economizer import \
-    AirsideEconomizerConfigGenerator
+from volttron_config_gen.base.config_economizer import BaseConfigGenerator
 
 
-class JsonAirsideEconomizerConfigGenerator(AirsideEconomizerConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses haystack3 tags from two jsonfile files - one containing tags
     for equipments/devices and another containing haystack3 tags for points
@@ -104,7 +103,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = JsonAirsideEconomizerConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

@@ -1,12 +1,11 @@
 import copy
 import math
 import sys
-from volttron.config_gen.utils.edo_utils import *
-from volttron.config_gen.base.config_driver import \
-    DriverConfigGenerator
+from volttron_config_gen.utils.edo_utils import *
+from volttron_config_gen.base.config_driver import BaseConfigGenerator
 
 
-class EdoDriverConfigGenerator(DriverConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses edo semantic model from csv file to
     generate VOLTTRON platform driver agent configurations for
@@ -134,7 +133,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = EdoDriverConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

@@ -2,11 +2,10 @@ import json
 from collections import defaultdict
 import sys
 
-from volttron.config_gen.base.config_airsidercx import \
-    AirsideRCxConfigGenerator
+from volttron_config_gen.base.config_airsidercx import BaseConfigGenerator
 
 
-class JsonAirsideRCxConfigGenerator(AirsideRCxConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses haystack3 tags from two json files - one containing tags
     for equipments/devices and another containing haystack3 tags for points
@@ -109,7 +108,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = JsonAirsideRCxConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 

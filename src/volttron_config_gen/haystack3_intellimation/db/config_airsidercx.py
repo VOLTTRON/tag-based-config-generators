@@ -1,11 +1,10 @@
 import sys
 import psycopg2
 
-from volttron.config_gen.base.config_airsidercx import \
-    AirsideRCxConfigGenerator
+from volttron_config_gen.base.config_airsidercx import BaseConfigGenerator
 
 
-class IntellimationAirsideRCxConfigGenerator(AirsideRCxConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     class that parses haystack3 tags from a postgres db to generate
     platform driver configuration for normal framework driver type
@@ -113,7 +112,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = IntellimationAirsideRCxConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 
