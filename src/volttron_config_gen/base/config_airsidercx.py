@@ -3,10 +3,10 @@ import os.path
 import sys
 from abc import abstractmethod
 import copy
-from volttron.config_gen.utils import strip_comments
+from volttron_config_gen.utils import strip_comments
 
 
-class AirsideRCxConfigGenerator:
+class BaseConfigGenerator:
     """
     Base class to generate AirsideRCx agent configuration based on a configuration template
     """

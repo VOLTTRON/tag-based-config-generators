@@ -3,11 +3,10 @@ import sys
 import re
 
 import psycopg2
-from volttron.config_gen.base.config_driver import \
-    DriverConfigGenerator
+from volttron_config_gen.base.config_driver import BaseConfigGenerator
 
 
-class IntellimationDriverConfigGenerator(DriverConfigGenerator):
+class ConfigGenerator(BaseConfigGenerator):
     """
     class that parses haystack3 tags from a postgres db to generate
     platform driver configuration for normal framework driver type
@@ -187,7 +186,7 @@ def main():
         print("script requires one argument - path to configuration file")
         exit()
     config_path = sys.argv[1]
-    d = IntellimationDriverConfigGenerator(config_path)
+    d = ConfigGenerator(config_path)
     d.generate_configs()
 
 if __name__ == '__main__':

@@ -2,10 +2,10 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
-from volttron.config_gen.utils import strip_comments
+from volttron_config_gen.utils import strip_comments
 
 
-class DriverConfigGenerator:
+class BaseConfigGenerator:
     """
     Base class to generate platform driver configuration based on a configuration template.
     Generates configuration templates for Air Handling Units (AHU, DOAS, RTU) and associated VAVs, and

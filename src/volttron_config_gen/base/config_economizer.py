@@ -3,10 +3,10 @@ import copy
 import os.path
 import sys
 from abc import abstractmethod
-from volttron.config_gen.utils import strip_comments
+from volttron_config_gen.utils import strip_comments
 
 
-class AirsideEconomizerConfigGenerator:
+class BaseConfigGenerator:
     """
     Base class that parses semantic tags to generate
     Airside Economizer agent configuration based on a configuration template

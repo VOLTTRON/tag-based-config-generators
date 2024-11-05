@@ -4,12 +4,12 @@ import sys
 from abc import abstractmethod
 import copy
 import shutil
-from volttron.config_gen.utils import strip_comments
-from volttron.config_gen.utils.ilc.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
+from volttron_config_gen.utils import strip_comments
+from volttron_config_gen.utils.ilc.validate_pairwise import extract_criteria as pairwise_extract_criteria, \
     validate_input as pairwise_validate_input, calc_column_sums as pairwise_calc_column_sums
 
 
-class ILCConfigGenerator:
+class BaseConfigGenerator:
     """
     Base class that parses semantic tags to generate
     ILC agent configurations based on a configuration templates
