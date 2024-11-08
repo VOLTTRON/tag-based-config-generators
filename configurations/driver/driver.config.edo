@@ -1,8 +1,8 @@
  {
      "metadata": {
 
-        #"points_csv": "/home/chandrika/volttron/connected-communities/csv/morris_ctr_point_info.csv"
-        "points_csv": "/home/chandrika/volttron/connected-communities/csv/catalyst_point_info.csv"
+        "points_csv": "/home/chandrika/tag-based-config-generators/morris_ctr_point_info.csv"
+        #"points_csv": "/home/chandrika/tag-based-config-generators/catalyst_point_info.csv"
         },
 
 
@@ -32,13 +32,20 @@
                 "priority": 14,
 
                 # if device id is unique, use the below nf query format
-                "query": "@period:[1, +inf]  @attr_device_id:[{device_id},{device_id}]",
+                #"query": "@period:[1, +inf]  @attr_device_id:[{device_id},{device_id}]",
 
                 # query format when device id is not unique and both device id and obj_name are required to uniquely
                 # identify a device
                 #"query": "@period:[1, +inf] @attr_device_id:[{device_id},{device_id}] @attr_prop_object_name: {obj_name}",
-
-                "topic_name_format": "object_name:{prop_object_name}"
+                "structured_query": {
+                    "field": {
+                        "property": "device_id",
+                        "numeric": {
+                            "minValue": 1,
+                            "maxValue": 1
+                        }
+                    }
+                }
               },
               "interval": 60
             }

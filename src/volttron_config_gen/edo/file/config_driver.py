@@ -5,6 +5,29 @@ from volttron_config_gen.utils.edo_utils import *
 from volttron_config_gen.base.config_driver import BaseConfigGenerator
 
 
+def replace_device_field(field_dict, device_id):
+    if device_id:
+        if field_dict.get("text"):
+            field_dict["text"] = device_id
+        elif field_dict.get("numeric"):
+            field_dict["numeric"]["minValue"] = int(device_id)
+            field_dict["numeric"]["maxValue"] = int(device_id)
+        return True
+    return False
+
+
+def process_structured_query(query, device_id):
+    if "field" in query:
+        # not nested
+        if query["field"]["property"] == "device_id":
+            return replace_device_field(query["field"], device_id)
+    else:
+        for condition, fields in query.items():
+            for d in fields:
+                if d["field"]["property"] == "device_id":
+                    return replace_device_field(d["field"], device_id)
+    return True
+
 class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses edo semantic model from csv file to
@@ -107,22 +130,17 @@ class ConfigGenerator(BaseConfigGenerator):
         # Using only device id in template
         device_name = None
         driver = copy.deepcopy(self.config_template)
-        nf_query_format = driver["driver_config"]["query"]
-        if "{device_id}" in nf_query_format and device_id is None or \
-                "{obj_name}" in nf_query_format and device_name is None:
+        structured_query = driver["driver_config"]["structured_query"]
+        if not process_structured_query(structured_query, device_id):
             if not self.unmapped_device_details.get(equip_id):
                 self.unmapped_device_details[equip_id] = dict()
             self.unmapped_device_details[equip_id]["type"] = equip_type
             self.unmapped_device_details[equip_id]["equip_id"] = equip_id
-            self.unmapped_device_details[equip_id]["error"] = \
-                ("Unable to parse device id from any of the PointName values. "
-                 f"Expected format: device_id:device_name:point_name. Last read point name: {p}")
+            self.unmapped_device_details[equip_id]["error"] = "Unable to parse device id"
             return None
-        else:
-            nf_query = nf_query_format.format(device_id=device_id,
-                                              obj_name=device_name)
-            driver["driver_config"]["query"] = nf_query
-            return driver
+
+        driver["driver_config"]["structured_query"] = structured_query
+        return driver
 
     def get_name_from_id(self, equip_id):
         return f"{equip_id}_{self._map[equip_id]}"
@@ -135,6 +153,71 @@ def main():
     config_path = sys.argv[1]
     d = ConfigGenerator(config_path)
     d.generate_configs()
+
+def test_structured_query_parse():
+    structured_query = {"structured_query": {
+        "and": [
+            {
+                "field": {
+                    "property": "period",
+                    "numeric": {
+                        "minValue": 1,
+                        "maxInfinity": True
+                    }
+                }
+            },
+            {
+                "field": {
+                    "property": "device_id",
+                    "numeric": {
+                        "minValue": 316300,
+                        "maxValue": 316300
+                    }
+                }
+            }
+        ]
+    }
+    }
+
+
+    structured_query2 = {
+        "structured_query": {
+            "field": {
+                "property": "device_id",
+                "numeric": {
+                    "minValue": 1,
+                    "maxInfinity": True
+                }
+            }
+        }
+    }
+    structured_query3 = {
+        "structured_query": {
+            "field": {
+                "property": "device_id",
+                "text": "2450001"
+            }
+        }
+    }
+
+    query_test = structured_query3["structured_query"]
+    device_id = "1000"
+    updated_query = copy.deepcopy(query_test)
+
+    if "field" in query_test:
+        # not nested
+        if query_test["field"]["property"] == "device_id":
+            if not replace_device_field(updated_query, device_id):
+                # update unmapped
+                pass
+    else:
+        for condition, fields in updated_query.items():
+            for d in fields:
+                if d["field"]["property"] == "device_id":
+                    if not replace_device_field(d, device_id):
+                        pass
+
+    print(updated_query)
 
 
 if __name__ == '__main__':
