@@ -5,6 +5,24 @@ from volttron_config_gen.utils.edo_utils import *
 from volttron_config_gen.base.config_driver import BaseConfigGenerator
 
 
+def process_structured_query(query, device_id):
+    if "field" in query:
+        # not nested
+        if query["field"]["property"] == "device_id":
+            if device_id:
+                query["field"]["text"] = device_id
+            else:
+                return False
+    else:
+        for condition, fields in query.items():
+            for d in fields:
+                if d["field"]["property"] == "device_id":
+                    if device_id:
+                        d["field"]["text"] = device_id
+                    else:
+                        return False
+    return True
+
 class ConfigGenerator(BaseConfigGenerator):
     """
     Class that parses edo semantic model from csv file to
@@ -107,26 +125,20 @@ class ConfigGenerator(BaseConfigGenerator):
         # Using only device id in template
         device_name = None
         driver = copy.deepcopy(self.config_template)
-        nf_query_format = driver["driver_config"]["query"]
-        if "{device_id}" in nf_query_format and device_id is None or \
-                "{obj_name}" in nf_query_format and device_name is None:
+        structured_query = driver["driver_config"]["structured_query"]
+        if not process_structured_query(structured_query, device_id):
             if not self.unmapped_device_details.get(equip_id):
                 self.unmapped_device_details[equip_id] = dict()
             self.unmapped_device_details[equip_id]["type"] = equip_type
             self.unmapped_device_details[equip_id]["equip_id"] = equip_id
-            self.unmapped_device_details[equip_id]["error"] = \
-                ("Unable to parse device id from any of the PointName values. "
-                 f"Expected format: device_id:device_name:point_name. Last read point name: {p}")
+            self.unmapped_device_details[equip_id]["error"] = "Unable to parse device id"
             return None
-        else:
-            nf_query = nf_query_format.format(device_id=device_id,
-                                              obj_name=device_name)
-            driver["driver_config"]["query"] = nf_query
-            return driver
+
+        driver["driver_config"]["structured_query"] = structured_query
+        return driver
 
     def get_name_from_id(self, equip_id):
         return f"{equip_id}_{self._map[equip_id]}"
-
 
 def main():
     if len(sys.argv) != 2:
@@ -135,7 +147,6 @@ def main():
     config_path = sys.argv[1]
     d = ConfigGenerator(config_path)
     d.generate_configs()
-
 
 if __name__ == '__main__':
     main()
