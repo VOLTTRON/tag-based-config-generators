@@ -9,6 +9,7 @@ RTU_ID = 5
 
 # Variable Air Volume Terminal Unit EquipClassID
 VAV_ID = 21
+VAV_REHEAT_ID = 158
 
 # Building Electric Meter EquipClassID
 ELEC_METER_ID = 32
@@ -31,7 +32,7 @@ def get_ahus_and_points(df: pandas.DataFrame):
 
 
 def get_vavs_and_points(df: pandas.DataFrame):
-    vav_points = df.query(f'EquipClassID == {VAV_ID}')
+    vav_points = df.query(f'EquipClassID == [{VAV_ID}, {VAV_REHEAT_ID}]')
     return vav_points.groupby('EquipmentID').nth(0), vav_points
 
 

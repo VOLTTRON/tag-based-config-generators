@@ -1,14 +1,14 @@
  {
      "metadata": {
-        "points_csv": "/home/chandrika/volttron/connected-communities/csv/morris_ctr_point_info.csv"
-        #"points_csv": "/home/chandrika/volttron/connected-communities/csv/catalyst_point_info.csv"
+        #"points_csv": "/home/chandrika/tag-based-config-generators/HUB_BAS_Point_Data_PNNL_Nov2024.csv"
+        "points_csv": "/home/chandrika/tag-based-config-generators/Catalyst_BAS_Point_Data_PNNL_Nov2024.csv"
         },
 
      # Make sure campus&building information matches what is used for platform.driver
      # optional. defaults to empty
      "campus": "campus1",
      # optional. defaults to empty
-     "building": "morris_ctr",
+     "building": "Catalyst_BAS",
 
      # metadata value to identify the specific points and hence its name in this setup
      "point_meta_map": {
@@ -18,14 +18,14 @@
             "fan_status": 62,
 
             # Supply Fan Speed Feedback
-            "fan_speedcmd": 14,
+            "fan_speedcmd": [67, 14],
 
             # Hot Water Valve Command
-            "zone_reheat": 74,
+            "zone_reheat": 72,
 
             # will raise warning message if no point of this type is found
             # vav damper command
-            "zone_damper": 224,
+            "zone_damper": 286,
 
             # will raise warning message if no point of this type is found
             # Duct Static Pressure - 2/3 ?
@@ -35,10 +35,10 @@
             "duct_stcpr_stpt": 96,
 
             # Outside Air Temp
-            "sa_temp": 13,
+            "sa_temp": 20,
 
             # supply air temperature setpoint
-            "sat_stpt":  18
+            "sat_stpt":  [53, 344]
      },
 
      # The field that contains the above point metadata

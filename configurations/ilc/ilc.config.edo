@@ -1,14 +1,14 @@
  {
      "metadata": {
-         "points_csv": "/home/chandrika/volttron/connected-communities/csv/morris_ctr_point_info.csv"
-        #"points_csv": "/home/chandrika/volttron/connected-communities/csv/catalyst_point_info.csv"
+         #"points_csv": "/home/chandrika/tag-based-config-generators/HUB_BAS_Point_Data_PNNL_Nov2024.csv"
+        "points_csv": "/home/chandrika/tag-based-config-generators/Catalyst_BAS_Point_Data_PNNL_Nov2024.csv"
         },
 
      # optional. if not provided will be derived from site_id.split('.')[-2]
      #"campus": "dcps",
 
      # optional. if not provided will be derived from site_id.split('.')[-1]
-     "building": "morris_ctr",
+     "building": "Catalyst_BAS",
 
      ######### Configuration to identify whole building power meter. This required for ILC.  ##################
      ######### SHOULD MATCH the device name used by driver so that topic names match. ###########
@@ -38,27 +38,27 @@
      # Should include all points used in control and criteria configs.
      "point_meta_map": {
             "WholeBuildingPower": 235,
-            "ZoneCoolingTemperatureSetPoint":  215,
+            "ZoneCoolingTemperatureSetPoint":  [10301, 213],
             "MinimumAirFlow": 572,
             #  "ZoneAirFlowSetpoint": "SaFlow", # Not used for anacostia. Derived as ZoneAirFlow*MaxAirFlow/100
             "ZoneAirFlow": 347,
-            "MaxAirFlow": 573,
-            "ZoneTemperature": 215,
-            "OccupancyCommand": 191
+            "MaxAirFlow": [573, 10299], # remove 10299 once the csv is fixed
+            "ZoneTemperature": 123,
+            "OccupancyCommand": [489, 238]
         },
 
      # optional point default value if no point name can be found using metadata/tags a default value can be provided
      # useful in cases where we know point exists but tagging is incomplete.
      # keys for below dict should be subset of key in point_meta_map
 
-     "point_default_map": {
-        "ZoneCoolingTemperatureSetPoint" : "default_zone_cooling_temp_sp",
-        "MinimumAirFlow": "default_minimum_airflow",
-        "ZoneAirFlow": "default_zone_airflow",
-        "MaxAirFlow": "default_maxairflow",
-        "ZoneTemperature": "default_zntemp",
-        "OccupancyCommand": "default_occ_cmd"
-     },
+     #"point_default_map": {
+     #   "ZoneCoolingTemperatureSetPoint" : "default_zone_cooling_temp_sp",
+     #   "MinimumAirFlow": "default_minimum_airflow",
+     #   "ZoneAirFlow": "default_zone_airflow",
+     #   "MaxAirFlow": "default_maxairflow",
+     #   "ZoneTemperature": "default_zntemp",
+     #   "OccupancyCommand": "default_occ_cmd"
+     #},
 
      # The field that contains the above point metadata
      "point_meta_field": "PointClassID",

@@ -76,7 +76,7 @@ class ConfigGenerator(BaseConfigGenerator):
                 # ideally shouldn't reach here. don't expect more than 1 entry per configured power meter equipment id
                 raise ValueError("More than one equipment found with configured power meter id"
                                  f"{self.configured_power_meter_id}"
-                                 "Please add 'power_meter_id' parameter to the configuration and provide"
+                                 "Please add 'power_meter_id' parameter to the configuration and provide "
                                  "value as the equipment id of whole building power meter")
 
         else:
@@ -86,7 +86,7 @@ class ConfigGenerator(BaseConfigGenerator):
             if len(elec_meter_point.index) > 1:
                 raise ValueError(f"More than one equipment found with the Equip Class ID {ELEC_METER_ID} "
                                  f"and Point Class ID {ELEC_MTR_POWER_POINT_ID}. "
-                                 "Please add 'power_meter_id' parameter to the configuration and provide"
+                                 "Please add 'power_meter_id' parameter to the configuration and provide "
                                  "value as the equipment id of whole building power meter")
 
         if elec_meter_point.empty:
@@ -96,7 +96,7 @@ class ConfigGenerator(BaseConfigGenerator):
             else:
                 raise ValueError(f"Unable to find equipment with the Equip Class ID {ELEC_METER_ID} "
                                  f"and Point Class ID {ELEC_MTR_POWER_POINT_ID}. "
-                                 "Please add 'power_meter_id' parameter to the configuration and provide"
+                                 "Please add 'power_meter_id' parameter to the configuration and provide "
                                  "value as the equipment id of whole building power meter")
 
         self.power_meter = elec_meter_point

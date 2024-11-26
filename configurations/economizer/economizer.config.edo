@@ -1,12 +1,13 @@
  {
      "metadata": {
-        "points_csv": "/home/chandrika/volttron/connected-communities/csv/catalyst_point_info.csv"
+        #"points_csv": "/home/chandrika/tag-based-config-generators/HUB_BAS_Point_Data_PNNL_Nov2024.csv"
+        "points_csv": "/home/chandrika/tag-based-config-generators/Catalyst_BAS_Point_Data_PNNL_Nov2024.csv"
         },
 
      # optional. if not provided will be derived from site_id.split('.')[-2]
      "campus": "campus1",
      # optional. if not provided will be derived from site_id.split('.')[-1]
-     "building": "catalyst",
+     "building": "Catalysts_BAS",
 
      # metadata value to indentify the specific points and hence its name in this setup
      "point_meta_map": {
@@ -17,8 +18,8 @@
             "outdoor_damper_signal": 7,
             # if 'chilled water valve pos' is not there try 'valve cmd'
             #"cool_call": ["ChwVlvPos", "ChwVlvCmd"],
-            "cool_call" : 75,
-            "supply_fan_speed": 14
+            "cool_call" : [75, 73],
+            "supply_fan_speed": [67, 14]
         },
      # The field that contains the above point metadata
      "point_meta_field": "PointClassID",
@@ -27,11 +28,11 @@
      # useful in cases where we know point exists but tagging is incomplete.
      # keys for below dict should be subset of key in point_meta_map
 
-     "point_default_map": {
-        "supply_fan_status" : "default_name1",
-        "return_air_temperature": "default_name2",
-        "mixed_air_temperature": "default_name3"
-     },
+     #"point_default_map": {
+     #   "supply_fan_status" : "default_name1",
+     #   "return_air_temperature": "default_name2",
+     #   "mixed_air_temperature": "default_name3"
+     #},
 
      #"output_dir":"airside_economizer_configs_from_db",
      "config_template": {

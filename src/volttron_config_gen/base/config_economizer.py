@@ -45,7 +45,7 @@ class BaseConfigGenerator:
         # initialize output dir
         default_prefix = self.building + "_" if self.building else ""
         self.output_dir = self.config_dict.get(
-            "output_dir", f"{default_prefix}airside_economizer_configs")
+            "output_dir", f"{default_prefix}economizer_configs")
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
         elif not os.path.isdir(self.output_dir):
@@ -115,6 +115,7 @@ class BaseConfigGenerator:
         final_config["device"]["unit"][ahu]["subdevices"] = list()
         point_mapping = final_config["arguments"]["point_mapping"]
         missing_points = []
+        default_points = []
         # Get ahu point details
         for volttron_point_type in self.point_meta_map.keys():
             point_name = self.get_point_name(ahu_id, "ahu", volttron_point_type)
@@ -122,13 +123,25 @@ class BaseConfigGenerator:
                 point_mapping[volttron_point_type] = point_name
             elif self.point_default_map.get(volttron_point_type):
                 point_mapping[volttron_point_type] = self.point_default_map.get(volttron_point_type)
+                default_points.append(f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
             else:
-                missing_points.append(volttron_point_type)
+                missing_points.append(f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
 
-        if missing_points:
-            self.unmapped_device_details[ahu_id] = {"type": "ahu",
-                                                    "error": f"Unable to find points of type(s): {missing_points}",
-                                                    "topic_name": self.equip_id_point_topic_map.get(ahu_id)}
+        if missing_points or default_points:
+            self.unmapped_device_details[ahu_id] = {"type": "ahu"}
+            if missing_points:
+                self.unmapped_device_details[ahu_id]["error"] = (f"Unable to find points using "
+                                                                 f"metadata field {self.point_meta_field}. "
+                                                                 f"Missing points and their configured mapping: "
+                                                                 f"{missing_points}")
+            if default_points:
+                self.unmapped_device_details[ahu_id]["warning"] = (f"Unable to find points using "
+                                                                   f"metadata field {self.point_meta_field} but found "
+                                                                   f"default point names. Using default point names "
+                                                                   f"Missing points and their configured mapping: "
+                                                                   f"{default_points}")
+            if self.equip_id_point_topic_map.get(ahu_id):
+                self.unmapped_device_details[ahu_id]["topic_name"] = self.equip_id_point_topic_map.get(ahu_id)
             return ahu, None
         else:
             return ahu, final_config

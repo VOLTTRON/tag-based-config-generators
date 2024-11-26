@@ -33,7 +33,7 @@ class ConfigGenerator(BaseConfigGenerator):
         pd_series = df.query(
             f'EquipmentID== {equip_id} and {self.point_meta_field} == {self.point_meta_map[point_key]}').PointName
 
-        if pd_series.size == 1:
+        if not pd_series.empty:
             return pd_series.iat[0]
         else:
             return ""
