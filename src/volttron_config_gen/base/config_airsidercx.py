@@ -108,13 +108,13 @@ class BaseConfigGenerator:
                 # ahu without vavs and vav without ahuref are not applicable for AirsideRCx
                 self.unmapped_device_details["unmapped_vavs"] = {
                     "type": "vav",
-                    "error": f"Warning. Found vavs without ahu mapping. Ignoring vavs. {vavs}"}
+                    "warning": f"Found vavs without ahu mapping. Ignoring vavs. {vavs}"}
                 continue
             if ahu_id and not vavs:
                 # ahu without vavs and vav without ahuref are not applicable for AirsideRCx
                 self.unmapped_device_details[ahu_id] = {
                     "type": "ahu",
-                    "error": f"Warning. AHU without VAVs. Ignoring AHU"}
+                    "warning": f"AHU without VAVs. Ignoring AHU"}
                 continue
 
 
@@ -162,22 +162,32 @@ class BaseConfigGenerator:
                 point_name = self.point_default_map.get(volttron_point_type, "")
             point_mapping[volttron_point_type] = point_name
 
+        # check for warnings:
+        if not point_mapping.get("duct_stcpr"):
+            self.unmapped_device_details[ahu_id] = {"type": "ahu",
+                                                    "warning": "Unable to find point of type duct_stcpr using "
+                                                               f"metadata field {self.point_meta_field}. "
+                                                               f"Configured mapping is "
+                                                               f"duct_stcpr-{self.point_meta_map['duct_stcpr']}"}
+            if self.equip_id_point_topic_map.get(ahu_id):
+                self.unmapped_device_details[ahu_id]["topic_name"] = self.equip_id_point_topic_map.get(ahu_id)
+
         # varify if mandatory ahu points are there
         # fan_status or fan_speedcmd should be available for airsidercx
         if not point_mapping.get("fan_status") and not point_mapping.get("fan_speedcmd"):
             # Cannot proceed. Add detals to unmapped devices dict and return None
             self.unmapped_device_details[ahu_id] = {"type": "ahu",
-                                                    "error": "Neither fan_status nor fan_speedcmd point is available",
-                                                    "topic_name": self.equip_id_point_topic_map.get(ahu_id)}
+                                                    "error": "Unable to fan_status or fan_speedcmd point using "
+                                                             f"metadata field {self.point_meta_field}. "
+                                                             f"Configured mapping for these fields are "
+                                                             f"fan_status-{self.point_meta_map['fan_status']} "
+                                                             f"fan_speedcmd-{self.point_meta_map['fan_speedcmd']}" }
+            if self.equip_id_point_topic_map.get(ahu_id):
+                self.unmapped_device_details[ahu_id]["topic_name"] = self.equip_id_point_topic_map.get(ahu_id)
 
             return ahu, None
 
-        # check for warnings:
-        if not point_mapping.get("duct_stcpr"):
-            self.unmapped_device_details[ahu_id] = {"type": "ahu",
-                                                    "error": "Warning. No point of type duct_stcpr was found",
-                                                    "topic_name": self.equip_id_point_topic_map.get(ahu_id)}
-
+        # AHU has all necessary points. Proceed to VAVs
         # Initialize vav point mapping to set as there can be more than 1
         for volttron_point_type in self.volttron_point_types_vav:
             point_mapping[volttron_point_type] = set()
@@ -203,8 +213,10 @@ class BaseConfigGenerator:
                 if volttron_point_type == "zone_damper":
                     # Add warning message with topic names of vavs
                     self.unmapped_device_details[ahu_id] = {"type": "vav",
-                                                            "error": "Warning. No point of type zone_damper was found",
-                                                            "topic_name": dict()}
+                                                            "warning": "Unable to find point of type zone_damper "
+                                                                       f"using metadata field {self.point_meta_field}. "
+                                                                       f"Configured mapping for zone_damper is "
+                                                                       f"{self.point_meta_map['zone_damper']}"}
                     for vav_id in vavs:
                         if vav_id in self.equip_id_point_topic_map:
                             # max two(one for each interested point) topic names for each vav available

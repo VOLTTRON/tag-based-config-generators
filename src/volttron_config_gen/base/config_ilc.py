@@ -237,7 +237,7 @@ class BaseConfigGenerator:
             iterator = vav_details
 
         for vav_id, ahu_id in iterator:
-            skip_vav = False
+            missing_vav_points = []
             config = copy.deepcopy(self.control_template)
             vav = self.get_name_from_id(vav_id)
             if ahu_id:
@@ -256,16 +256,16 @@ class BaseConfigGenerator:
                     point_mapping[volttron_point_type] = point_name
                 else:
                     if not self.unmapped_device_details.get(vav_id):
-                        self.unmapped_device_details[vav_id] = {
-                           "type": "vav",
-                           "error": f"Unable to find point of type {volttron_point_type} "
-                                    f"using metadata field {self.point_meta_field} and "
-                                    f"configured point mapping {self.point_meta_map[volttron_point_type]}"
-                        }
-                    skip_vav = True
+                        self.unmapped_device_details[vav_id] = {"type" : "vav"}
+                    missing_vav_points.append(f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
 
-            if skip_vav:
+            if missing_vav_points:
                 # some points are missing, details in umapped_device_details skip vav and move to next
+                self.unmapped_device_details[vav_id] = {
+                    "type": "vav",
+                    "error": f"Unable to find point(s) using using metadata field {self.point_meta_field}. Missing "
+                             f"points and their configured mapping: {missing_vav_points}"
+                }
                 continue
 
             # If all necessary points are found go ahead and add it to control config
