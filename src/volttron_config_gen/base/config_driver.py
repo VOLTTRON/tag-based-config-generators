@@ -2,6 +2,8 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
+from pathlib import Path
+
 from volttron_config_gen.utils import strip_comments
 
 
@@ -149,20 +151,43 @@ class BaseConfigGenerator:
             topic = self.ahu_topic_pattern.format(ahu_name)
             # replace right variables in driver_config_template
             driver_config = self.generate_config_from_template(ahu_id, "ahu")
-            if driver_config:
-                final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
-            topic_pattern = self.vav_topic_pattern.format(ahu=ahu_name, vav='{vav}')  # fill ahu, leave vav variable
+            result = self.update_registry_config(driver_config, ahu_id, "ahu", final_mapper)
+            if result:
+                final_mapper[self.driver_vip].append({"config-name": topic,
+                                                      "config": driver_config})
+            # fill ahu, leave vav variable
+            vav_topic = self.vav_topic_pattern.format(ahu=ahu_name, vav='{vav}')
         else:
-            topic_pattern = self.vav_topic_pattern.replace("{ahu}/", "")  # ahu
+            vav_topic = self.vav_topic_pattern.replace("{ahu}/", "")  # ahu
         # Now loop through and do the same for all vavs
         for vav_id in vavs:
             vav = self.get_name_from_id(vav_id)
-            topic = topic_pattern.format(vav=vav)
+            topic = vav_topic.format(vav=vav)
             # replace right variables in driver_config_template
             driver_config = self.generate_config_from_template(vav_id, "vav")
-            if driver_config:
-                final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
+            result = self.update_registry_config(driver_config, vav_id, "vav", final_mapper)
+            if result:
+                final_mapper[self.driver_vip].append({"config-name": topic,
+                                                      "config": driver_config})
+
+        if not final_mapper[self.driver_vip]:
+            final_mapper = None
         return ahu_name, final_mapper
+
+    def update_registry_config(self, driver_config, equip_id, equip_type, final_mapper):
+        if not driver_config:
+            return False
+        if driver_config.get("registry_config"):
+            # generate registry config
+            rfile, rtype = self.generate_registry_config(equip_id, equip_type)
+            if not rfile:
+                return False
+            driver_config["registry_config"] = f"config://registry_config/{equip_id}.{rtype}"
+            final_mapper[self.driver_vip].append(
+                {"config-name": f"registry_config/{equip_id}.{rtype}",
+                 "config": rfile,
+                 "config-type": rtype})
+        return True
 
     @abstractmethod
     def generate_config_from_template(self, equip_id, equip_type):
@@ -171,3 +196,13 @@ class BaseConfigGenerator:
     @abstractmethod
     def get_name_from_id(self, id):
         pass
+
+
+    def generate_registry_config(self, equip_id, equip_type):
+        """
+        Method to be overridden by driver config generators for bacnet, modbus etc.
+        where a registry config file is needed.
+        method should return registry config name and config file and config file type
+        config name returned will be included in driver config as config://<config_name>
+        """
+        raise NotImplementedError
