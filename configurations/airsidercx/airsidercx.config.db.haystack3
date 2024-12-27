@@ -16,7 +16,7 @@
      # optional. if not provided will be derived from site_id.split('.')[-1]
      #"building": "test_building",
 
-     # metadata value to indentity the specific points and hence its name in this setup
+     # metadata value to identify the specific points and hence its name in this setup
      "point_meta_map": {
             # fan_status or fan_speedcmd one of the two should be available for airsidercx
             "fan_status": "s:SaFanCmd",
