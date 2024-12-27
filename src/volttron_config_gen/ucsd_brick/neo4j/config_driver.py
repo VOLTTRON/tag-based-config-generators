@@ -7,20 +7,8 @@ from collections import defaultdict
 
 import psycopg2
 from volttron_config_gen.base.config_driver import BaseConfigGenerator
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection
 
-from neo4j import GraphDatabase
-
-class Neo4jConnection:
-    def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password))
-
-    def __del__(self):
-        self._driver.close()
-
-    def query(self, query, parameters=None):
-        with self._driver.session() as session:
-            r = session.run(query, parameters)
-            return [record for record in r]
 
 class ConfigGenerator(BaseConfigGenerator):
     """
@@ -44,9 +32,15 @@ class ConfigGenerator(BaseConfigGenerator):
     def get_ahu_and_vavs(self):
         ahu_dict = defaultdict(list)
         # 1. Query for vavs that are mapped to ahu
-        query = ("MATCH (a:AHU)-[:feeds]->(v:VAV) "
-                 "RETURN a.name, a.`Remote Station IP`, a.`BACnet Device Object Identifier`, "
-                 "v.name, v.`Remote Station IP`, v.`BACnet Device Object Identifier`;")
+        # query = ("MATCH (a:AHU)-[:feeds]->(v:VAV) "
+        #          "RETURN a.name, a.`Remote Station IP`, a.`BACnet Device Object Identifier`, "
+        #          "v.name, v.`Remote Station IP`, v.`BACnet Device Object Identifier`;")
+        query = (
+            "MATCH "
+            "(c1:`Bacnet Controller`)-[:controls]->(a:AHU)-[:feeds]->(v:VAV)<-[:controls]-(c2:`Bacnet Controller`)  "
+            "RETURN a.name, c1.`IP Address`, c1.`Device Object Identifier`, "
+            "v.name, c2.`IP Address`, c2.`Device Object Identifier`;"
+        )
         result = self.connection.query(query)
         if result:
             for r in result:
@@ -58,8 +52,9 @@ class ConfigGenerator(BaseConfigGenerator):
 
         # 2. Query for ahus without vavs
         # append to result
-        query = ("MATCH (a:AHU) WHERE not ((a)-[:feeds]->(:VAV)) "
-                 "RETURN a.name, a.`Remote Station IP`, a.`BACnet Device Object Identifier`;")
+        query = ("MATCH "
+                 "(c1:`Bacnet Controller`)-[:controls]->(a:AHU) WHERE not ((a)-[:feeds]->(:VAV)) "
+                 "RETURN a.name, c1.`IP Address`, c1.`Device Object Identifier`;")
         result = self.connection.query(query)
         if result:
             for r in result:
@@ -69,8 +64,8 @@ class ConfigGenerator(BaseConfigGenerator):
 
         # 3. query for vavs without
         # if exists add to self.unmapped_device_details
-        query = ("MATCH (v:VAV) WHERE not ((:AHU)-[:feeds]->(v)) "
-                 "RETURN v.name, v.`Remote Station IP`, v.`BACnet Device Object Identifier`;")
+        query = ("MATCH (v:VAV)<-[:controls]-(c2:`Bacnet Controller`)  WHERE not ((:AHU)-[:feeds]->(v)) "
+                 "RETURN v.name, c2.`IP Address`, c2.`Device Object Identifier`;")
         result = self.connection.query(query)
         if result:
             for r in result:

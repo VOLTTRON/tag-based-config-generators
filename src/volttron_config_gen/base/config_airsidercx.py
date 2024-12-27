@@ -156,7 +156,7 @@ class BaseConfigGenerator:
         point_mapping = final_config["arguments"]["point_mapping"]
         # Get ahu point details
         for volttron_point_type in self.volttron_point_types_ahu:
-            point_name = self.get_point_name(ahu_id, "ahu", volttron_point_type)
+            point_name = self.get_point_name(ahu_id, "AHU", volttron_point_type)
             if not point_name:
                 # see if there is a default
                 point_name = self.point_default_map.get(volttron_point_type, "")
@@ -198,7 +198,7 @@ class BaseConfigGenerator:
             subdevices.append(vav)
             # get vav point name
             for volttron_point_type in self.volttron_point_types_vav:
-                point_name = self.get_point_name(vav_id, "vav", volttron_point_type)
+                point_name = self.get_point_name(vav_id, "VAV", volttron_point_type)
                 if not point_name:
                     # see if there is a default
                     point_name = self.point_default_map.get(volttron_point_type, "")
