@@ -129,19 +129,21 @@ class BaseConfigGenerator:
 
         if missing_points or default_points:
             self.unmapped_device_details[ahu_id] = {"type": "ahu"}
-            if missing_points:
-                self.unmapped_device_details[ahu_id]["error"] = (f"Unable to find points using "
-                                                                 f"metadata field {self.point_meta_field}. "
-                                                                 f"Missing points and their configured mapping: "
-                                                                 f"{missing_points}")
             if default_points:
-                self.unmapped_device_details[ahu_id]["warning"] = (f"Unable to find points using "
-                                                                   f"metadata field {self.point_meta_field} but found "
-                                                                   f"default point names. Using default point names "
-                                                                   f"Missing points and their configured mapping: "
-                                                                   f"{default_points}")
+                self.unmapped_device_details[ahu_id]["warning"] = (
+                    f"Unable to find points using "
+                    f"metadata field {self.point_meta_field} but found "
+                    f"default point names. Using default point names "
+                    f"Missing points and their configured mapping: "
+                    f"{default_points}")
             if self.equip_id_point_topic_map.get(ahu_id):
                 self.unmapped_device_details[ahu_id]["topic_name"] = self.equip_id_point_topic_map.get(ahu_id)
+        if missing_points:
+            self.unmapped_device_details[ahu_id]["error"] = (
+                f"Unable to find points using "
+                f"metadata field {self.point_meta_field}. "
+                f"Missing points and their configured mapping: "
+                f"{missing_points}")
             return ahu, None
         else:
             return ahu, final_config

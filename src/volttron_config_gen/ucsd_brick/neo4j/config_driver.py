@@ -18,7 +18,7 @@ class ConfigGenerator(BaseConfigGenerator):
     def __init__(self, config):
         super().__init__(config)
 
-        # get details on haystack3 metadata
+        # get details on neo4j metadata db
         metadata = self.config_dict.get("metadata")
         connect_params = metadata.get("connection_params")
 
