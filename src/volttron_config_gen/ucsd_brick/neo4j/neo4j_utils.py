@@ -26,8 +26,23 @@ def query_point_name(equip_id, equip_type, point_labels, connection):
                   f"{equip_id}"
                   "'}) "
                   "RETURN p.name;")
-        print(f"{_query}")
+        #print(f"{_query}")
         result = connection.query(_query)
         if result:
-            return result[0]
+            return result[0][0]
+    return None
+
+def query_point_names(equip_id, equip_type, point_labels, connection):
+    # possible sql injection issue but no way to send parameterized query for labels ?!
+    ## TODO: validate point_label, equip_id for valid characters length?
+    _query = (f"MATCH (p:Point)-[:isPointOf]->(e:{equip_type}"
+              "{name:'"
+              f"{equip_id}"
+              "'}) "
+              "WHERE any(label in labels(p) WHERE label IN $point_labels) "
+              "RETURN labels(p)[1], p.name;", point_labels)
+    print(f"{_query}")
+    result = connection.query(_query)
+    if result:
+        return result[0]
     return None
