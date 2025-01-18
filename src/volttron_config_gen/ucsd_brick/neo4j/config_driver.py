@@ -5,7 +5,6 @@ import sys
 import re
 from collections import defaultdict
 
-import psycopg2
 from volttron_config_gen.base.config_driver import BaseConfigGenerator
 from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection
 

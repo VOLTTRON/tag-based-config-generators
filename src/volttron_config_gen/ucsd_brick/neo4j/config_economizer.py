@@ -1,5 +1,4 @@
 import sys
-import psycopg2
 
 from volttron_config_gen.base.config_economizer import BaseConfigGenerator
 from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_name
@@ -7,8 +6,8 @@ from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, qu
 
 class ConfigGenerator(BaseConfigGenerator):
     """
-    class that parses haystack3 tags from a postgres db to generate
-    platform driver configuration for normal framework driver type
+    class that parses BRICK like tags from a neo4j db to generate
+    AirsideEconomizer agent configuration
     """
 
     def __init__(self, config):

@@ -1,8 +1,5 @@
 import sys
 from collections import defaultdict
-from unittest.loader import VALID_MODULE_NAME
-
-import psycopg2
 
 from volttron_config_gen.base.config_airsidercx import BaseConfigGenerator
 from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_name
@@ -45,6 +42,9 @@ class ConfigGenerator(BaseConfigGenerator):
         if result:
             for r in result:
                 if r[1] and r[2] and r[4] and r[5]:
+                    # TODO- check Is this a overkill. can I just query based on ahu - feeds -  vav
+                    #  ie. what if we generate airsidercx configs for equips that driver doesn't
+                    #  know about or collect data for
                     # if device address and device id  are not present skip those as
                     # driver won't be collecting data for those anyway.
                     ahu_dict[r[0]].append(r[3])
