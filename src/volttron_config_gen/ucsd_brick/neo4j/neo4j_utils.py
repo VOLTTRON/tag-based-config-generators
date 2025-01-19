@@ -40,9 +40,8 @@ def query_point_names(equip_id, equip_type, point_labels, connection):
               f"{equip_id}"
               "'}) "
               "WHERE any(label in labels(p) WHERE label IN $point_labels) "
-              "RETURN labels(p)[1], p.name;", point_labels)
-    print(f"{_query}")
-    result = connection.query(_query)
+              "RETURN labels(p)[1],  p.name;")
+    result = connection.query(_query, parameters={'point_labels':point_labels})
     if result:
-        return result[0]
+        return result
     return None

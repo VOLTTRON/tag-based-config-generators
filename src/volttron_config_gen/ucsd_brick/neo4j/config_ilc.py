@@ -1,8 +1,7 @@
 import sys
-from collections import defaultdict
 
 from volttron_config_gen.base.config_ilc import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_name
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_names
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -22,6 +21,7 @@ class ConfigGenerator(BaseConfigGenerator):
         self.connection = Neo4jConnection(connect_params["uri"], connect_params["user"],
                                           connect_params["password"])
         self.vav_ahu_list = list()
+        self.equip_point_label_name_map = dict()
 
     def get_building_power_meter(self):
         # if self.configured_power_meter_id:
@@ -73,15 +73,34 @@ class ConfigGenerator(BaseConfigGenerator):
 
 
     def get_point_name(self, equip_id, equip_type, point_key):
-        self.equip_point_label_name_map = dict()
-        point_labels = self.point_meta_map[point_key]
-            # possible sql injection issue but no way to send parameterized query to cypher
-            ## TODO: validate point_label, equip_id for valid characters length?
-
-        if not equip_type or equip_type.upper() not in ["AHU", "VAV"]:
+        if not equip_type or equip_type.upper() not in ["AHU", "VAV", "POWER_METER"]:
             raise ValueError(f"Unknown equipment type {equip_type}")
 
-        return query_point_name(equip_id, equip_type.upper(), point_labels, self.connection)
+        if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
+            self.equip_point_label_name_map[equip_id] = {}
+            point_labels = []
+            for key in self.volttron_point_types_vav:
+                if isinstance(self.point_meta_map[key], str):
+                    point_labels.append(self.point_meta_map[key])
+                else:
+                    point_labels.extend(self.point_meta_map[key])
+                # possible sql injection issue but no way to send parameterized query to cypher
+                ## TODO: validate point_label, equip_id for valid characters length?
+            result = query_point_names(equip_id, equip_type.upper(), point_labels, self.connection)
+            label_name_map = dict()
+            if result:
+                for row in result:
+                    label_name_map[row[0]] = row[1]
+            for key in self.volttron_point_types_vav:
+                if isinstance(self.point_meta_map[key], str):
+                    self.equip_point_label_name_map[equip_id][key] = label_name_map.get(self.point_meta_map[key])
+                else:
+                    for l in self.point_meta_map[key]:
+                        if label_name_map.get(l):
+                            self.equip_point_label_name_map[equip_id][key] = label_name_map[l]
+                            break
+        # Done finding interested points for a given equip id
+        return self.equip_point_label_name_map[equip_id].get(point_key)
 
     def get_name_from_id(self, _id):
         return _id
