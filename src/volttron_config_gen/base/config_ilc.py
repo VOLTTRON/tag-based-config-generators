@@ -1,3 +1,4 @@
+import datetime
 import json
 import os.path
 import sys
@@ -45,9 +46,10 @@ class BaseConfigGenerator:
         self.point_default_map = self.config_dict.get("point_default_map", dict())
 
         self.power_meter_id = None
-        self.building_power_point_type = self.point_meta_map["WholeBuildingPower"]
+        self.volttron_point_type_building_power = "WholeBuildingPower"
+        self.building_power_point_type = self.point_meta_map[self.volttron_point_type_building_power]
 
-        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != "WholeBuildingPower"]
+        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != self.volttron_point_type_building_power]
         self.point_types_vav = [self.point_meta_map[x] for x in self.volttron_point_types_vav]
         # Initialize point mapping for ilc config
         self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
@@ -123,20 +125,23 @@ class BaseConfigGenerator:
         """
         Generated all configuration files for ILC agent for a given site
         """
-
+        st = datetime.datetime.utcnow()
+        print(f"Starting generation at {st}")
         self.generate_pairwise_config()
 
         self.generate_ilc_config()
 
         # Generated ilc config. Now generated config with vav details
-        self.generate_control_config()
-        self.generate_criteria_config()
+        # self.generate_control_config()
+        # self.generate_criteria_config()
+        self.generate_control_and_criteria_config()
 
         if self.config_metadata_dict[self.ilc_agent_vip]:
             config_metafile_name = f"{self.output_dir}/config_metadata.json"
             with open(config_metafile_name, 'w') as f:
                 json.dump(self.config_metadata_dict, f, indent=4)
-
+        et = datetime.datetime.utcnow()
+        print(f"Done with config generation. end time is {et} time taken {et-st}")
         if self.unmapped_device_details:
             err_file_name = f"{self.output_errors}/unmapped_device_details"
             with open(err_file_name, 'w') as outfile:
@@ -227,8 +232,12 @@ class BaseConfigGenerator:
 
         self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": "config", "config": file_path})
 
-    def generate_control_config(self):
+    def generate_control_and_criteria_config(self):
+        # sort the list of point before doing find and replace of volttron point name with actual point names
+        # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
+        self.volttron_point_types_vav.sort(key=len)
         control_config = dict()
+        criteria_config = dict()
 
         vav_details = self.get_vav_ahu_map()
         if isinstance(vav_details, dict):
@@ -239,81 +248,6 @@ class BaseConfigGenerator:
         for vav_id, ahu_id in iterator:
             missing_vav_points = []
             config = copy.deepcopy(self.control_template)
-            vav = self.get_name_from_id(vav_id)
-            if ahu_id:
-                vav_topic = self.get_name_from_id(ahu_id) + "/" + vav
-            else:
-                vav_topic = vav
-            config["device_topic"] = self.topic_prefix + vav_topic
-            point_mapping = dict()
-            # get vav point name
-            for volttron_point_type in self.volttron_point_types_vav:
-                point_name = self.get_point_name(vav_id, "vav", volttron_point_type)
-                if not point_name:
-                    # see if there is a default
-                    point_name = self.point_default_map.get(volttron_point_type, "")
-                if point_name:
-                    point_mapping[volttron_point_type] = point_name
-                else:
-                    if not self.unmapped_device_details.get(vav_id):
-                        self.unmapped_device_details[vav_id] = {"type" : "vav"}
-                    missing_vav_points.append(f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
-
-            if missing_vav_points:
-                # some points are missing, details in umapped_device_details skip vav and move to next
-                self.unmapped_device_details[vav_id] = {
-                    "type": "vav",
-                    "error": f"Unable to find point(s) using using metadata field {self.point_meta_field}. Missing "
-                             f"points and their configured mapping: {missing_vav_points}"
-                }
-                continue
-
-            # If all necessary points are found go ahead and add it to control config
-            volttron_point = config["curtail_settings"]["point"]
-            config["curtail_settings"]["point"] = point_mapping[volttron_point]
-
-            # More than 1 curtail possible? should we loop through?
-            volttron_point_list = config["device_status"]["curtail"]["device_status_args"]
-
-            # sort the list of point before doing find and replace of volttron point name with actual point names
-            # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
-            volttron_point_list.sort(key=len)
-
-            v_conditions = config["device_status"]["curtail"]["condition"]
-
-            for condition in v_conditions:
-                for point in volttron_point_list:
-                    condition = condition.replace(point, point_mapping[point])
-
-            point_list = [point_mapping[point] for point in volttron_point_list]
-
-            # replace curtail values with actual point names
-            config["device_status"]["curtail"]["device_status_args"] = point_list
-            config["device_status"]["curtail"]["condition"] = condition
-            control_config[vav_topic] = {vav: config}
-
-        if control_config:
-            file_name = f"{self.device_type}_control.config"
-            file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
-            with open(file_path, 'w') as outfile:
-                json.dump(control_config, outfile, indent=4)
-            self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": file_name, "config": file_path})
-
-    def generate_criteria_config(self):
-        # sort the list of point before doing find and replace of volttron point name with actual point names
-        # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
-        self.volttron_point_types_vav.sort(key=len)
-
-        criteria_config = dict()
-
-        vav_details = self.get_vav_ahu_map()
-        if isinstance(vav_details, dict):
-            iterator = vav_details.items()
-        else:
-            iterator = vav_details
-
-        for vav_id, ahu_id in iterator:
-            skip_vav = False
             curtail_config = {"device_topic": ""}
             curtail_config.update(copy.deepcopy(self.criteria_template))
             vav = self.get_name_from_id(vav_id)
@@ -321,6 +255,7 @@ class BaseConfigGenerator:
                 vav_topic = self.get_name_from_id(ahu_id) + "/" + vav
             else:
                 vav_topic = vav
+            config["device_topic"] = self.topic_prefix + vav_topic
             curtail_config["device_topic"] = self.topic_prefix + vav_topic
             point_mapping = dict()
             # get vav point name
@@ -332,49 +267,22 @@ class BaseConfigGenerator:
                 if point_name:
                     point_mapping[volttron_point_type] = point_name
                 else:
-                    skip_vav = True
                     if not self.unmapped_device_details.get(vav_id):
-                        self.unmapped_device_details[vav_id] = {
-                           "type": "vav",
-                           "error": f"Unable to find point of "
-                                    f"type {volttron_point_type} using metadata field {self.point_meta_field} and "
-                                    f"configured point mapping {self.point_meta_map[volttron_point_type]}"
-                        }
+                        self.unmapped_device_details[vav_id] = {"type": "vav"}
+                    missing_vav_points.append(
+                        f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
 
-            if skip_vav:
+            if missing_vav_points:
                 # some points are missing, details in umapped_device_details skip vav and move to next
+                self.unmapped_device_details[vav_id] = {"type": "vav",
+                    "error": f"Unable to find point(s) using using metadata field {self.point_meta_field}. Missing "
+                             f"points and their configured mapping: {missing_vav_points}"}
                 continue
 
-            for key, value_dict in curtail_config.items():
-                if key in ["room_type", "device_topic"]:
-                    continue
-                # else it is an operation - look for operation and operation_args and replace
-                # volttron point names with actual point names
-
-                # Replace in "operation"
-                value_dict["operation"] = self.replace_point_names(value_dict["operation"],
-                                                                   point_mapping,
-                                                                   self.volttron_point_types_vav)
-
-                # Replace in "operation_args"
-                if isinstance(value_dict["operation_args"], dict):
-                    value_dict["operation_args"]["always"] = self.replace_point_names(
-                        value_dict["operation_args"]["always"],
-                        point_mapping,
-                        self.volttron_point_types_vav)
-                    value_dict["operation_args"]["nc"] = self.replace_point_names(
-                        value_dict["operation_args"]["nc"],
-                        point_mapping,
-                        self.volttron_point_types_vav)
-                else:
-                    # it's a list
-                    value_dict["operation_args"] = self.replace_point_names(
-                        value_dict["operation_args"],
-                        point_mapping,
-                        self.volttron_point_types_vav)
-
-            criteria_config[vav_topic] = {vav: curtail_config}
-
+            # If all necessary points are found go ahead and add it to control config
+            control_config[vav_topic] = self.update_control_config(config, point_mapping, vav)
+            criteria_config[vav_topic] = self.update_criteria_config(curtail_config, point_mapping,
+                                                                     vav)
         if criteria_config:
             criteria_config['mappers'] = self.mappers
             file_name = f"{self.device_type}_criteria.config"
@@ -382,6 +290,61 @@ class BaseConfigGenerator:
             with open(file_path, 'w') as outfile:
                 json.dump(criteria_config, outfile, indent=4)
             self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": file_name, "config": file_path})
+
+        if control_config:
+            file_name = f"{self.device_type}_control.config"
+            file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
+            with open(file_path, 'w') as outfile2:
+                json.dump(control_config, outfile2, indent=4)
+            self.config_metadata_dict[self.ilc_agent_vip].append(
+                {"config-name": file_name, "config": file_path})
+
+    def update_control_config(self, config, point_mapping, vav):
+        volttron_point = config["curtail_settings"]["point"]
+        config["curtail_settings"]["point"] = point_mapping[volttron_point]
+        # More than 1 curtail possible? should we loop through?
+        volttron_point_list = config["device_status"]["curtail"]["device_status_args"]
+        # sort the list of point before doing find and replace of volttron point name with actual point names
+        # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
+        volttron_point_list.sort(key=len)
+        v_conditions = config["device_status"]["curtail"]["condition"]
+        for condition in v_conditions:
+            for point in volttron_point_list:
+                try:
+                    condition = condition.replace(point, point_mapping[point])
+                except Exception as e:
+                    print(f"Exception {e}")
+        point_list = [point_mapping[point] for point in volttron_point_list]
+        # replace curtail values with actual point names
+        config["device_status"]["curtail"]["device_status_args"] = point_list
+        config["device_status"]["curtail"]["condition"] = condition
+        return {vav: config}
+
+    def update_criteria_config(self, curtail_config, point_mapping, vav):
+        for key, value_dict in curtail_config.items():
+            if key in ["room_type", "device_topic"]:
+                continue
+            # else it is an operation - look for operation and operation_args and replace
+            # volttron point names with actual point names
+
+            # Replace in "operation"
+            value_dict["operation"] = self.replace_point_names(value_dict["operation"],
+                                                               point_mapping,
+                                                               self.volttron_point_types_vav)
+
+            # Replace in "operation_args"
+            if isinstance(value_dict["operation_args"], dict):
+                value_dict["operation_args"]["always"] = self.replace_point_names(
+                    value_dict["operation_args"]["always"], point_mapping,
+                    self.volttron_point_types_vav)
+                value_dict["operation_args"]["nc"] = self.replace_point_names(
+                    value_dict["operation_args"]["nc"], point_mapping,
+                    self.volttron_point_types_vav)
+            else:
+                # it's a list
+                value_dict["operation_args"] = self.replace_point_names(
+                    value_dict["operation_args"], point_mapping, self.volttron_point_types_vav)
+        return {vav: curtail_config}
 
     @staticmethod
     def replace_point_names(search_obj, point_mapping, volttron_point_list):
