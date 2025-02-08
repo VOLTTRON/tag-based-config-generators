@@ -1,7 +1,7 @@
 import sys
 
 from volttron_config_gen.base.config_ilc import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_names
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, get_points_for_equip
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -14,7 +14,6 @@ class ConfigGenerator(BaseConfigGenerator):
         super().__init__(config)
 
         # get details on metadata neo4jdb
-        self.equip_point_label_name_map = dict()
         metadata = self.config_dict.get("metadata")
         connect_params = metadata.get("connection_params")
 
@@ -64,6 +63,8 @@ class ConfigGenerator(BaseConfigGenerator):
             return point_name
 
     def get_vav_ahu_map(self):
+        # TODO: Update query with building name configured
+        #  current model is missing relationship between building and room/equipment
         if not self.vav_ahu_list:
             q = "MATCH (a:AHU)-[:feeds]->(v:VAV) RETURN v.name, a.name;"
             result = self.connection.query(q)
@@ -77,28 +78,10 @@ class ConfigGenerator(BaseConfigGenerator):
             raise ValueError(f"Unknown equipment type {equip_type}")
 
         if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
-            self.equip_point_label_name_map[equip_id] = {}
-            point_labels = []
-            for key in self.volttron_point_types_vav:
-                if isinstance(self.point_meta_map[key], str):
-                    point_labels.append(self.point_meta_map[key])
-                else:
-                    point_labels.extend(self.point_meta_map[key])
-                # possible sql injection issue but no way to send parameterized query to cypher
-                ## TODO: validate point_label, equip_id for valid characters length?
-            result = query_point_names(equip_id, equip_type.upper(), point_labels, self.connection)
-            label_name_map = dict()
-            if result:
-                for row in result:
-                    label_name_map[row[0]] = row[1]
-            for key in self.volttron_point_types_vav:
-                if isinstance(self.point_meta_map[key], str):
-                    self.equip_point_label_name_map[equip_id][key] = label_name_map.get(self.point_meta_map[key])
-                else:
-                    for l in self.point_meta_map[key]:
-                        if label_name_map.get(l):
-                            self.equip_point_label_name_map[equip_id][key] = label_name_map[l]
-                            break
+            self.equip_point_label_name_map[equip_id] = get_points_for_equip(
+                equip_id, equip_type, self.volttron_point_types_vav, self.point_meta_map,
+                self.connection)
+
         # Done finding interested points for a given equip id
         return self.equip_point_label_name_map[equip_id].get(point_key)
 

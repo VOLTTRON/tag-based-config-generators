@@ -45,3 +45,26 @@ def query_point_names(equip_id, equip_type, point_labels, connection):
     if result:
         return result
     return None
+
+def get_points_for_equip(equip_id, equip_type, interested_point_types, point_meta_map, connection):
+    result_dict = {}
+    point_labels = []
+    for key in interested_point_types:
+        if isinstance(point_meta_map[key], str):
+            point_labels.append(point_meta_map[key])
+        else:
+            point_labels.extend(point_meta_map[key])
+    query_result = query_point_names(equip_id, equip_type.upper(), point_labels, connection)
+    label_name_map = dict()
+    if query_result:
+        for row in query_result:
+            label_name_map[row[0]] = row[1]
+    for key in interested_point_types:
+        if isinstance(point_meta_map[key], str):
+            result_dict[key] = label_name_map.get(point_meta_map[key])
+        else:
+            for l in point_meta_map[key]:
+                if label_name_map.get(l):
+                    result_dict[key] = label_name_map[l]
+                    break
+    return result_dict

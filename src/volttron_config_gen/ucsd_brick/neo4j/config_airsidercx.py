@@ -2,7 +2,7 @@ import sys
 from collections import defaultdict
 
 from volttron_config_gen.base.config_airsidercx import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_point_name
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, get_points_for_equip
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -26,51 +26,44 @@ class ConfigGenerator(BaseConfigGenerator):
 
         # Initialize point mapping for airsidercx config
         self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
-        self.volttron_point_types_ahu = ["fan_status", "duct_stcpr", "duct_stcpr_stpt",
-                           "sa_temp", "sat_stpt", "fan_speedcmd"]
-        self.volttron_point_types_vav = ["zone_reheat", "zone_damper"]
+        self.equip_point_label_name_map = dict()
+
 
     def get_ahu_and_vavs(self):
         ahu_dict = defaultdict(list)
-        query = ("MATCH "
-                 "(c1:`Bacnet Controller`)-[:controls]->(a:AHU)-[:feeds]->(v:VAV)<-[:controls]-(c2:`Bacnet Controller`)  "
-                 "RETURN a.name, c1.`IP Address`, c1.`Device Object Identifier`, "
-                 "v.name, c2.`IP Address`, c2.`Device Object Identifier`;")
+        # TODO: ADD relationship to configured building name once model is updated
+        #  current model is missing relationship between building and room/equipment
+        query = ("MATCH (a:AHU)-[:feeds]->(v:VAV) "
+                 "RETURN a.name, v.name;")
         result = self.connection.query(query)
-        self.unmapped_device_details["ahus without device id/address"] = []
-        self.unmapped_device_details["vavs without device id/address"] = []
         if result:
             for r in result:
-                if r[1] and r[2] and r[4] and r[5]:
-                    # TODO- check Is this a overkill. can I just query based on ahu - feeds -  vav
-                    #  ie. what if we generate airsidercx configs for equips that driver doesn't
-                    #  know about or collect data for
-                    # if device address and device id  are not present skip those as
-                    # driver won't be collecting data for those anyway.
-                    ahu_dict[r[0]].append(r[3])
-                elif not r[1] or not r[2]:
-                    self.unmapped_device_details["ahus without device id/address"].append(r[0])
-                elif not r[4] or not r[5]:
-                    self.unmapped_device_details["vavs without device id/address"].append(r[3])
-
+                ahu_dict[r[0]].append(r[1])
         # ahu without vavs and vav without ahuref are not applicable for AirsideRCx
-        if not self.unmapped_device_details["vavs without device id/address"]:
-            del self.unmapped_device_details["vavs without device id/address"]
-        if not self.unmapped_device_details["ahus without device id/address"]:
-            del self.unmapped_device_details["ahus without device id/address"]
         return ahu_dict
 
 
     def get_point_name(self, equip_id, equip_type, point_key):
         point_labels = self.point_meta_map[point_key]
-        # possible sql injection issue but no way to send parameterized query to cypher
         ## TODO: validate point_label, equip_id for valid characters length?
-
-        if not equip_type or equip_type.upper() not in ["AHU", "VAV"]:
+        ##  possible sql injection issue but no way to send parameterized query for query by labels
+        interested_point_types = []
+        if equip_type.upper() == "AHU":
+            interested_point_types = self.volttron_point_types_ahu
+        elif equip_type.upper() == "VAV":
+            interested_point_types = self.volttron_point_types_vav
+        else:
             raise ValueError(f"Unknown equipment type {equip_type}")
-        return query_point_name(equip_id, equip_type.upper(), point_labels, self.connection)
 
-
+        # instead of querying single point at a time, get all interested points at a time.
+        # querying single point at a time seems to take long with neo4j. may be because the
+        # example db doesn't have any indexes?
+        #return query_point_name(equip_id, equip_type.upper(), point_labels, self.connection)
+        if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
+            self.equip_point_label_name_map[equip_id] = get_points_for_equip(
+                equip_id, equip_type, interested_point_types, self.point_meta_map, self.connection)
+        # Done finding interested points for a given equip id
+        return self.equip_point_label_name_map[equip_id].get(point_key)
 
     def get_name_from_id(self, _id):
         return _id
