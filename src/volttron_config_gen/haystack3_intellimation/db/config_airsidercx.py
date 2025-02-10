@@ -39,8 +39,7 @@ class ConfigGenerator(BaseConfigGenerator):
         # }
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field", "miniDis")
-        # Initialize point mapping for airsidercx config
-        self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
+
         self.volttron_point_types_ahu = ["fan_status", "duct_stcpr", "duct_stcpr_stpt",
                            "sa_temp", "sat_stpt", "fan_speedcmd"]
         self.volttron_point_types_vav = ["zone_reheat", "zone_damper"]

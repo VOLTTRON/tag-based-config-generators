@@ -23,9 +23,6 @@ class ConfigGenerator(BaseConfigGenerator):
         self.point_meta_map = self.config_dict.get("point_meta_map")
         # Use label always
         #self.point_meta_field = self.config_dict.get("point_meta_field", "label")
-
-        # Initialize point mapping for airsidercx config
-        self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
         self.equip_point_label_name_map = dict()
 
 

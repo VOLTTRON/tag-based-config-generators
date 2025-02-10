@@ -63,8 +63,6 @@ class BaseConfigGenerator:
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field", "miniDis")
         self.point_default_map = self.config_dict.get("point_default_map", dict())
-        # Initialize point mapping for airsidercx config
-        self.point_mapping = {x: "" for x in self.point_meta_map.keys()}
 
     @abstractmethod
     def get_ahus(self):
