@@ -48,7 +48,8 @@ class ConfigGenerator(BaseConfigGenerator):
         #                          f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
         #                          f"building power meter")
         # return ""
-        # TODO
+
+        # TODO current model doesn't have building power meter. Update after model is updated
         return ""
 
     def get_building_power_point(self):
@@ -63,7 +64,7 @@ class ConfigGenerator(BaseConfigGenerator):
             return point_name
 
     def get_vav_ahu_map(self):
-        # TODO: Update query with building name configured
+        # TODO: Update query with building name configured (self.building)
         #  current model is missing relationship between building and room/equipment
         if not self.vav_ahu_list:
             q = "MATCH (a:AHU)-[:feeds]->(v:VAV) RETURN v.name, a.name;"
@@ -79,8 +80,8 @@ class ConfigGenerator(BaseConfigGenerator):
 
         if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
             self.equip_point_label_name_map[equip_id] = get_points_for_equip(
-                equip_id, equip_type, self.volttron_point_types_vav, self.point_meta_map,
-                self.connection)
+                equip_id, equip_type, self.point_meta_map[equip_type].keys(),
+                self.point_meta_map[equip_type], self.connection)
 
         # Done finding interested points for a given equip id
         return self.equip_point_label_name_map[equip_id].get(point_key)

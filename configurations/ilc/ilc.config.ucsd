@@ -8,7 +8,7 @@
      },
 
      # optional. if not provided will be derived from site_id.split('.')[-2]
-     #"campus": "dcps",
+     #"campus": "campus1",
 
      # optional. if not provided will be derived from site_id.split('.')[-1]
      "building": "UCSD",
@@ -17,31 +17,29 @@
      ######### SHOULD MATCH the device name used by driver so that topic names match. ###########
      ######### i.e. devices/<campus>/<building>/<building_power_meter> should be the topic prefix for the driver data
 
-     #### Three ways supported to identity power meter ####
+     #### Ways to be supported to identity power meter ####
 
-     #### 1. Identify based on haystack tag. Default method used by code ####
-     # haystack tag "siteMeter" is used to identify power meter.
-     # power meter name is derived from id attribute of device and used as building power meter name. Optionally,
-     # a custom power meter topic name can be provided using the configuration "building_power_meter", in this case
-     # power meter device and its points are identified using haystack tags but configured "building_power_meter" is
+     #### 1. Identify based on BRICK TAG ####
+
+     # Optionally, a custom power meter topic name can be provided using the configuration "building_power_meter",
+     # in this case power meter device and its points are identified using BRICK labels but configured
+     # "building_power_meter" is
      # used to derive device topic name, devices/<campus>/<building>/<building_power_meter>
 
-     ##### 2. Use building power meter EquipClass, default = 32
-
-     #"power_meter_id": 1234,
-
-     ##### 3. When there is no power meter and agent is used to post data as powermeter - i.e. simulated power meter
+     ##### 2. When there is no power meter and agent is used to post data as powermeter - i.e. simulated power meter
      ##### specify both the "building_power_meter" and "building_power_point" attributes. In this case, config
      ##### generator will not do any validation of the device and generate ilc config with given names
 
-     #"building_power_meter": "custom building meter topic",
-     #"building_power_point": "efg",
+     "building_power_meter": "custom_building_meter_topic",
+     "building_power_point": "configured_fake_power_point",
 
      # metadata value to identify the specific points and hence its name in this setup
      # Should include all points used in control and criteria configs.
-     # TODO Can we assume all points except wholebuildingpower are vav points. or do we need device info
      "point_meta_map": {
-            "WholeBuildingPower": "ActivePowerSensor",
+        "power_meter": {
+            "WholeBuildingPower": "ActivePowerSensor"
+            },
+        "vav": {
             "ZoneCoolingTemperatureSetPoint":  ["EffectiveAirTemperatureCoolingSetpoint", "DischargeAirTemperatureSensor"],
             "MinimumAirFlow": "SupplyAirFlow",
             #  "ZoneAirFlowSetpoint": "SaFlow", # Not used for anacostia. Derived as ZoneAirFlow*MaxAirFlow/100
@@ -50,22 +48,32 @@
             "ZoneTemperature": "DischargeAirTemperatureSensor",
             "OccupancyCommand": "OccupancyStatus"
             },
+        "lighting": {
+
+        }
+     },
 
      # optional point default value if no point name can be found using metadata/tags a default value can be provided
      # useful in cases where we know point exists but tagging is incomplete.
      # keys for below dict should be subset of key in point_meta_map
 
      #"point_default_map": {
-     #   "ZoneCoolingTemperatureSetPoint" : "default_zone_cooling_temp_sp",
-     #   "MinimumAirFlow": "default_minimum_airflow",
-     #   "ZoneAirFlow": "default_zone_airflow",
-     #   "MaxAirFlow": "default_maxairflow",
-     #   "ZoneTemperature": "default_zntemp",
-     #   "OccupancyCommand": "default_occ_cmd"
+     #   "vav": {
+     #     "ZoneCoolingTemperatureSetPoint" : "default_zone_cooling_temp_sp",
+     #     "MinimumAirFlow": "default_minimum_airflow",
+     #     "ZoneAirFlow": "default_zone_airflow",
+     #     "MaxAirFlow": "default_maxairflow",
+     #     "ZoneTemperature": "default_zntemp",
+     #     "OccupancyCommand": "default_occ_cmd"
+     #    },
+     #  "power_meter": {
+     #  },
+     #  "lighting": {
+     #  }
      #},
 
      # The field that contains the above point metadata
-     "point_meta_field": "PointClassID",
+     "point_meta_field": "Label",
 
      # Optional directory where all generated configs should go
      #"output_dir":"ilc_configs_from_config1",
@@ -82,7 +90,7 @@
         # enable validation for this configuration file
         # Validation of pairwise_criteria uses ilc/utils/validate_pairwise.py
 
-        "device_type": "vav",
+        #"device_type": "vav",
         "validate_pairwise_criteria": false,
 
         # ########### ilc config template ########
@@ -98,59 +106,63 @@
 
         # ######### control config template ########
         "control_config":{
-            "device_topic": "",
-            "curtail_settings": {
-                "load": "0.5",
-                "control_method": "offset",
-                "offset": 2.0,
-                "minimum": 70.0,
-                "maximum": 76.0,
-                # only one curtail setting and one point per curtail setting?
-                "point": "ZoneCoolingTemperatureSetPoint"
-            },
-            "device_status": {
-                # More than one curtail possible?
-                "curtail": {
-                    "device_status_args": ["MinimumAirFlow", "ZoneAirFlow", "MaxAirFlow", "OccupancyCommand"],
-                    "condition": ["(ZoneAirFlow*MaxAirFlow/100>MinimumAirFlow) & (Eq(OccupancyCommand, 0))"]
+            "vav": {
+                "device_topic": "",
+                "curtail_settings": {
+                    "load": "0.5",
+                    "control_method": "offset",
+                    "offset": 2.0,
+                    "minimum": 70.0,
+                    "maximum": 76.0,
+                    # only one curtail setting and one point per curtail setting?
+                    "point": "ZoneCoolingTemperatureSetPoint"
+                },
+                "device_status": {
+                    # More than one curtail possible?
+                    "curtail": {
+                        "device_status_args": ["MinimumAirFlow", "ZoneAirFlow", "MaxAirFlow", "OccupancyCommand"],
+                        "condition": ["(ZoneAirFlow*MaxAirFlow/100>MinimumAirFlow) & (Eq(OccupancyCommand, 0))"]
+                    }
                 }
             }
         },
 
         # ############ criteria config template #########
         "criteria_config":{
-            "room_type": {
-                "map_key": "Office",
-                "operation_type": "mapper",
-                "dict_name": "zone_type"
-            },
-            "available_zone_airflow_ratio": {
-                    "operation_type": "formula",
-                    "operation": "(ZoneAirFlow/MinimumAirFlow) - 1",
-                    "minimum": 0.0,
-                    "maximum": 10.0,
-                    "operation_args": ["MinimumAirFlow, ZoneAirFlow"]
-                    },
-            "box_size": {
-                    "operation_type": "formula",
-                    "operation": "MaxAirFlow/10",
-                    "minimum": 0.0,
-                    "maximum": 100.0,
-                    "operation_args": ["MaxAirFlow"]
+            "vav": {
+                "room_type": {
+                    "map_key": "Office",
+                    "operation_type": "mapper",
+                    "dict_name": "zone_type"
                 },
-            "zonetemperature_setpoint": {
-                    "operation": "1/(ZoneTemperature - ZoneCoolingTemperatureSetPoint)",
-                    "operation_type": "formula",
-                    "operation_args": {
-                        "always": [
-                            "ZoneTemperature"
-                        ],
-                        "nc": [
-                            "ZoneCoolingTemperatureSetPoint"
-                        ],
+                "available_zone_airflow_ratio": {
+                        "operation_type": "formula",
+                        "operation": "(ZoneAirFlow/MinimumAirFlow) - 1",
                         "minimum": 0.0,
-                        "maximum": 10.0
-                    }
+                        "maximum": 10.0,
+                        "operation_args": ["MinimumAirFlow, ZoneAirFlow"]
+                        },
+                "box_size": {
+                        "operation_type": "formula",
+                        "operation": "MaxAirFlow/10",
+                        "minimum": 0.0,
+                        "maximum": 100.0,
+                        "operation_args": ["MaxAirFlow"]
+                    },
+                "zonetemperature_setpoint": {
+                        "operation": "1/(ZoneTemperature - ZoneCoolingTemperatureSetPoint)",
+                        "operation_type": "formula",
+                        "operation_args": {
+                            "always": [
+                                "ZoneTemperature"
+                            ],
+                            "nc": [
+                                "ZoneCoolingTemperatureSetPoint"
+                            ],
+                            "minimum": 0.0,
+                            "maximum": 10.0
+                        }
+                }
             }
         },
 

@@ -47,29 +47,15 @@ class BaseConfigGenerator:
 
         self.power_meter_id = None
         self.volttron_point_type_building_power = "WholeBuildingPower"
-        self.building_power_point_type = self.point_meta_map[self.volttron_point_type_building_power]
-
-        self.volttron_point_types_vav = [x for x in self.point_meta_map if x != self.volttron_point_type_building_power]
-        self.point_types_vav = [self.point_meta_map[x] for x in self.volttron_point_types_vav]
-        # Initialize point mapping for ilc config
-        self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
+        self.point_type_building_power = self.point_meta_map["power_meter"][
+            self.volttron_point_type_building_power]
 
         # use this dict to give additional details for user to help manually find the issue
         self.unmapped_device_details = dict()
 
-        config_template = self.config_dict.get("config_template")
-        if not config_template:
+        self.config_template = self.config_dict.get("config_template")
+        if not self.config_template:
             raise ValueError(f"Missing parameter in config:'config_template'")
-
-        self.device_type = config_template.get("device_type")
-        if not self.device_type:
-            raise ValueError("Missing device_type parameter under config_template")
-
-        self.pairwise_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils/ilc",
-                                          f"pairwise_criteria_{self.device_type}.json")
-        if not os.path.exists(self.pairwise_path):
-            raise ValueError(f"Given device type is {self.device_type}. But unable to find corresponding "
-                             f"pairwise criteria file {self.pairwise_path}")
 
         self.ilc_template = {
             "campus": self.campus,
@@ -80,22 +66,9 @@ class BaseConfigGenerator:
             },
             "application_category": "Load Control",
             "application_name": "Intelligent Load Control",
-            "clusters": [
-                {
-                    "device_control_config": f"config://{self.device_type}_control.config",
-                    "device_criteria_config": f"config://{self.device_type}_criteria.config",
-                    "pairwise_criteria_config": f"config://{self.device_type}_criteria_matrix.json",
-                    "cluster_priority": 1.0
-                }
-            ]
+            "clusters": []
         }
-        self.ilc_template.update(config_template["ilc_config"])
-
-        self.control_template = config_template["control_config"]
-
-        self.criteria_template = {"device_topic": ""}
-        self.criteria_template.update(config_template["criteria_config"])
-        self.mappers = config_template.get('mapper_config', {})
+        self.ilc_template.update(self.config_template["ilc_config"])
 
         # initialize output dir
         default_prefix = self.building + "_" if self.building else ""
@@ -127,14 +100,13 @@ class BaseConfigGenerator:
         """
         st = datetime.datetime.utcnow()
         print(f"Starting generation at {st}")
-        self.generate_pairwise_config()
 
-        self.generate_ilc_config()
+        self.generate_pairwise_config("vav")
 
-        # Generated ilc config. Now generated config with vav details
-        # self.generate_control_config()
-        # self.generate_criteria_config()
-        self.generate_control_and_criteria_config()
+        self.generate_ilc_config("vav")
+
+        # Generated ilc config. Now generated config with device specific details
+        self.generate_control_and_criteria_config("vav")
 
         if self.config_metadata_dict[self.ilc_agent_vip]:
             config_metafile_name = f"{self.output_dir}/config_metadata.json"
@@ -153,53 +125,64 @@ class BaseConfigGenerator:
         else:
             sys.exit(0)
 
-    def generate_pairwise_config(self):
+    def generate_pairwise_config(self, device_type):
+
+        if not device_type:
+            raise ValueError("Missing device_type parameter under config_template")
+
+        pairwise_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils/ilc",
+                                          f"pairwise_criteria_{device_type}.json")
+        if not os.path.exists(pairwise_path):
+            raise ValueError(
+                f"Given device type is {device_type}. But unable to find corresponding "
+                f"pairwise criteria file {pairwise_path}")
 
         # Validate pairwise criteria if needed. exit if validation fails
-        if self.config_dict.get("config_template").get("validate_pairwise_criteria"):
-            pairwise_dict = None
+        if self.config_template.get("validate_pairwise_criteria"):
             try:
-                with open(self.pairwise_path, "r") as f:
+                with open(pairwise_path, "r") as f:
                     pairwise_dict = json.loads(strip_comments(f.read()))
             except Exception as e:
-                raise ValueError(f"Invalid json: pairwise criteria file {self.pairwise_path} failed. Exception {e}")
+                raise ValueError(f"Invalid json: pairwise criteria file {pairwise_path} failed. Exception {e}")
 
             criteria_labels, criteria_array = pairwise_extract_criteria(pairwise_dict["curtail"])
             col_sums = pairwise_calc_column_sums(criteria_array)
 
             result, ratio = pairwise_validate_input(criteria_array, col_sums)
             if not result:
-                sys.stderr.write(f"\nValidation of pairwise criteria file {self.pairwise_path} failed.\n"
+                sys.stderr.write(f"\nValidation of pairwise criteria file {pairwise_path} failed.\n"
                                  f"Computed criteria array:{criteria_array} column sums:{col_sums}\n"
                                  f"Inconsistency ratio is: {ratio}\n")
                 sys.exit(1)
 
         # write pairwise criteria file
-        file_name = f"{self.device_type}_criteria_matrix.json"
+        file_name = f"{device_type}_criteria_matrix.json"
         file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
-        shutil.copy(self.pairwise_path, file_path)
+        shutil.copy(pairwise_path, file_path)
         self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": file_name, "config": file_path})
 
-    def generate_ilc_config(self):
+    def generate_ilc_config(self, device_type):
         if not self.power_meter_name or not self.building_power_point:
             # if both are provided then use that don't try to look up device or point.
             # it might be a power meter agent and no actual power meter device
-            try:
-                self.power_meter_id = self.get_building_power_meter()
-                if not self.power_meter_id:
+            if not self.power_meter_id:
+                try:
+                    self.power_meter_id = self.get_building_power_meter()
+                    if not self.power_meter_id:
+                        self.unmapped_device_details["building_power_meter"] = {
+                            "type": "building power meter",
+                            "error": "Unable to locate building power meter"}
+                except ValueError as e:
+                    # Unable to uniquely identify power meter using siteMeter tag or with configured power meter id
                     self.unmapped_device_details["building_power_meter"] = {
                         "type": "building power meter",
-                        "error": "Unable to locate building power meter"}
-            except ValueError as e:
-                # Unable to uniquely identify power meter using siteMeter tag or with configured power meter id
-                self.unmapped_device_details["building_power_meter"] = {
-                    "type": "building power meter",
-                    "error": f"Unable to locate building power meter: Error: {e}"}
+                        "error": f"Unable to locate building power meter: Error: {e}"}
 
             if not self.building_power_point:
                 self.building_power_point = self.get_building_power_point()
-                if not self.building_power_point:
-                    self.building_power_point = self.point_default_map.get("WholeBuildingPower", "")
+                if not self.building_power_point and self.point_default_map.get("power_meter"):
+                    self.building_power_point = self.point_default_map["power_meter"].get(
+                        "WholeBuildingPower", "")
 
             if not self.building_power_point and \
                     self.power_meter_id and \
@@ -207,7 +190,7 @@ class BaseConfigGenerator:
                 self.unmapped_device_details[self.power_meter_id] = {
                     "type": "building power meter",
                     "error": f"Unable to locate building power point using the metadata "
-                             f"{self.building_power_point_type}"}
+                             f"{self.point_type_building_power}"}
 
             if not self.power_meter_name and self.power_meter_id:
                 self.power_meter_name = self.get_name_from_id(self.power_meter_id)
@@ -223,6 +206,12 @@ class BaseConfigGenerator:
                     "error": err
                 }
 
+        self.ilc_template["clusters"].append({
+            "device_control_config": f"config://{device_type}_control.config",
+            "device_criteria_config": f"config://{device_type}_criteria.config",
+            "pairwise_criteria_config": f"config://{device_type}_criteria_matrix.json",
+            "cluster_priority": 1.0
+        })
         # Generate ilc config file and metadata
         self.ilc_template["power_meter"]["device_topic"] = self.topic_prefix + self.power_meter_name
         self.ilc_template["power_meter"]["point"] = self.building_power_point
@@ -232,74 +221,91 @@ class BaseConfigGenerator:
 
         self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": "config", "config": file_path})
 
-    def generate_control_and_criteria_config(self):
+    def generate_control_and_criteria_config(self, device_type):
         # sort the list of point before doing find and replace of volttron point name with actual point names
         # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
-        self.volttron_point_types_vav.sort(key=len)
+        control_template = self.config_template["control_config"].get(device_type)
+        if not control_template:
+            raise ValueError(f"No control config template provided for device type {device_type}")
+
+        _criteria_template = self.config_template["criteria_config"].get(device_type)
+        if not control_template:
+            raise ValueError(f"No criteria config template provided for device type {device_type}")
+        criteria_template = {"device_topic": ""}
+        criteria_template.update(_criteria_template)
+        mappers = self.config_template.get('mapper_config', {})
+        volttron_point_types = [x for x in self.point_meta_map[device_type]]
+        volttron_point_types.sort(key=len)
         control_config = dict()
         criteria_config = dict()
-
-        vav_details = self.get_vav_ahu_map()
-        if isinstance(vav_details, dict):
-            iterator = vav_details.items()
-        else:
-            iterator = vav_details
-
-        for vav_id, ahu_id in iterator:
-            missing_vav_points = []
-            config = copy.deepcopy(self.control_template)
-            curtail_config = {"device_topic": ""}
-            curtail_config.update(copy.deepcopy(self.criteria_template))
-            vav = self.get_name_from_id(vav_id)
-            if ahu_id:
-                vav_topic = self.get_name_from_id(ahu_id) + "/" + vav
+        if device_type == "vav":
+            vav_details = self.get_vav_ahu_map()
+            if isinstance(vav_details, dict):
+                iterator = vav_details.items()
             else:
-                vav_topic = vav
-            config["device_topic"] = self.topic_prefix + vav_topic
-            curtail_config["device_topic"] = self.topic_prefix + vav_topic
-            point_mapping = dict()
-            # get vav point name
-            for volttron_point_type in self.volttron_point_types_vav:
-                point_name = self.get_point_name(vav_id, "vav", volttron_point_type)
-                if not point_name:
-                    # see if there is a default
-                    point_name = self.point_default_map.get(volttron_point_type, "")
-                if point_name:
-                    point_mapping[volttron_point_type] = point_name
+                iterator = vav_details
+
+            for vav_id, ahu_id in iterator:
+                missing_vav_points = []
+                config = copy.deepcopy(control_template)
+                curtail_config = {"device_topic": ""}
+                curtail_config.update(copy.deepcopy(criteria_template))
+                vav = self.get_name_from_id(vav_id)
+                if ahu_id:
+                    vav_topic = self.get_name_from_id(ahu_id) + "/" + vav
                 else:
-                    if not self.unmapped_device_details.get(vav_id):
-                        self.unmapped_device_details[vav_id] = {"type": "vav"}
-                    missing_vav_points.append(
-                        f"{volttron_point_type}({self.point_meta_map[volttron_point_type]})")
+                    vav_topic = vav
+                config["device_topic"] = self.topic_prefix + vav_topic
+                curtail_config["device_topic"] = self.topic_prefix + vav_topic
+                point_mapping = dict()
+                # get vav point name
+                for volttron_point_type in volttron_point_types:
+                    point_name = self.get_point_name(vav_id, "vav", volttron_point_type)
+                    if not point_name and self.point_default_map.get("vav"):
+                        # see if there is a default
+                        point_name = self.point_default_map.get(volttron_point_type, "")
+                    if point_name:
+                        point_mapping[volttron_point_type] = point_name
+                    else:
+                        if not self.unmapped_device_details.get(vav_id):
+                            self.unmapped_device_details[vav_id] = {"type": "vav"}
+                        missing_vav_points.append(
+                            f"{volttron_point_type}"
+                            f"({self.point_meta_map[device_type][volttron_point_type]})")
 
-            if missing_vav_points:
-                # some points are missing, details in umapped_device_details skip vav and move to next
-                self.unmapped_device_details[vav_id] = {"type": "vav",
-                    "error": f"Unable to find point(s) using using metadata field {self.point_meta_field}. Missing "
-                             f"points and their configured mapping: {missing_vav_points}"}
-                continue
+                if missing_vav_points:
+                    # some points are missing, details in umapped_device_details skip vav and move to next
+                    self.unmapped_device_details[vav_id] = {"type": "vav",
+                        "error": f"Unable to find point(s) using using metadata field "
+                                 f"{self.point_meta_field}. Missing "
+                                 f"points and their configured mapping: {missing_vav_points}"}
+                    continue
 
-            # If all necessary points are found go ahead and add it to control config
-            control_config[vav_topic] = self.update_control_config(config, point_mapping, vav)
-            criteria_config[vav_topic] = self.update_criteria_config(curtail_config, point_mapping,
-                                                                     vav)
+                # If all necessary points are found go ahead and add it to control config
+                control_config[vav_topic] = {vav: self.update_control_config(config,
+                                                                             point_mapping)}
+                criteria_config[vav_topic] = {vav: self.update_criteria_config(curtail_config,
+                                                                               point_mapping,
+                                                                               volttron_point_types)
+                                              }
         if criteria_config:
-            criteria_config['mappers'] = self.mappers
-            file_name = f"{self.device_type}_criteria.config"
+            criteria_config['mappers'] = mappers
+            file_name = f"{device_type}_criteria.config"
             file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
             with open(file_path, 'w') as outfile:
                 json.dump(criteria_config, outfile, indent=4)
             self.config_metadata_dict[self.ilc_agent_vip].append({"config-name": file_name, "config": file_path})
 
         if control_config:
-            file_name = f"{self.device_type}_control.config"
+            file_name = f"{device_type}_control.config"
             file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
             with open(file_path, 'w') as outfile2:
                 json.dump(control_config, outfile2, indent=4)
             self.config_metadata_dict[self.ilc_agent_vip].append(
                 {"config-name": file_name, "config": file_path})
 
-    def update_control_config(self, config, point_mapping, vav):
+    @staticmethod
+    def update_control_config(config, point_mapping):
         volttron_point = config["curtail_settings"]["point"]
         config["curtail_settings"]["point"] = point_mapping[volttron_point]
         # More than 1 curtail possible? should we loop through?
@@ -308,19 +314,21 @@ class BaseConfigGenerator:
         # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
         volttron_point_list.sort(key=len)
         v_conditions = config["device_status"]["curtail"]["condition"]
+        updated_conditions = []
         for condition in v_conditions:
             for point in volttron_point_list:
                 try:
                     condition = condition.replace(point, point_mapping[point])
                 except Exception as e:
-                    print(f"Exception {e}")
+                    raise Exception(f"Exception replacing point names in curtail conditions {e}")
+            updated_conditions.append(condition)
         point_list = [point_mapping[point] for point in volttron_point_list]
         # replace curtail values with actual point names
         config["device_status"]["curtail"]["device_status_args"] = point_list
-        config["device_status"]["curtail"]["condition"] = condition
-        return {vav: config}
+        config["device_status"]["curtail"]["condition"] = updated_conditions
+        return config
 
-    def update_criteria_config(self, curtail_config, point_mapping, vav):
+    def update_criteria_config(self, curtail_config, point_mapping, volttron_point_types):
         for key, value_dict in curtail_config.items():
             if key in ["room_type", "device_topic"]:
                 continue
@@ -330,21 +338,21 @@ class BaseConfigGenerator:
             # Replace in "operation"
             value_dict["operation"] = self.replace_point_names(value_dict["operation"],
                                                                point_mapping,
-                                                               self.volttron_point_types_vav)
+                                                               volttron_point_types)
 
             # Replace in "operation_args"
             if isinstance(value_dict["operation_args"], dict):
                 value_dict["operation_args"]["always"] = self.replace_point_names(
                     value_dict["operation_args"]["always"], point_mapping,
-                    self.volttron_point_types_vav)
+                    volttron_point_types)
                 value_dict["operation_args"]["nc"] = self.replace_point_names(
                     value_dict["operation_args"]["nc"], point_mapping,
-                    self.volttron_point_types_vav)
+                    volttron_point_types)
             else:
                 # it's a list
                 value_dict["operation_args"] = self.replace_point_names(
-                    value_dict["operation_args"], point_mapping, self.volttron_point_types_vav)
-        return {vav: curtail_config}
+                    value_dict["operation_args"], point_mapping, volttron_point_types)
+        return curtail_config
 
     @staticmethod
     def replace_point_names(search_obj, point_mapping, volttron_point_list):
