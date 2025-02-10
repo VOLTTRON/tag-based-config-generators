@@ -3,6 +3,8 @@ import os.path
 import sys
 from abc import abstractmethod
 import copy
+import datetime
+
 from volttron_config_gen.utils import strip_comments
 
 
@@ -39,8 +41,6 @@ class BaseConfigGenerator:
                                                      "miniDis")
         self.point_default_map = self.config_dict.get("point_default_map", dict())
 
-        # Initialize point mapping for airsidercx config
-        self.point_mapping = {x: [] for x in self.point_meta_map.keys()}
         self.volttron_point_types_ahu = ["fan_status", "duct_stcpr", "duct_stcpr_stpt",
                                          "sa_temp", "sat_stpt", "fan_speedcmd"]
         self.volttron_point_types_vav = ["zone_reheat", "zone_damper"]
@@ -97,6 +97,8 @@ class BaseConfigGenerator:
         pass
 
     def generate_configs(self):
+        st = datetime.datetime.utcnow()
+        print(f"Starting generation at {st}")
         config_metadata = dict()
         ahu_and_vavs = self.get_ahu_and_vavs()
         if isinstance(ahu_and_vavs, dict):
@@ -133,6 +135,8 @@ class BaseConfigGenerator:
             config_metafile_name = f"{self.output_dir}/config_metadata.json"
             with open(config_metafile_name, 'w') as f:
                 json.dump(config_metadata, f, indent=4)
+        et = datetime.datetime.utcnow()
+        print(f"Done with config generation. end time is {et} time taken {et-st}")
 
         if self.unmapped_device_details:
             err_file_name = f"{self.output_errors}/unmapped_device_details"
@@ -212,14 +216,16 @@ class BaseConfigGenerator:
 
                 if volttron_point_type == "zone_damper":
                     # Add warning message with topic names of vavs
-                    self.unmapped_device_details[ahu_id] = {"type": "vav",
-                                                            "warning": "Unable to find point of type zone_damper "
-                                                                       f"using metadata field {self.point_meta_field}. "
-                                                                       f"Configured mapping for zone_damper is "
-                                                                       f"{self.point_meta_map['zone_damper']}"}
+                    self.unmapped_device_details[ahu_id] = {
+                        "type": "vav",
+                        "warning": "Unable to find point of type zone_damper "
+                                   f"using metadata field {self.point_meta_field}. "
+                                   f"Configured mapping for zone_damper is "
+                                   f"{self.point_meta_map['zone_damper']}"}
                     for vav_id in vavs:
                         if vav_id in self.equip_id_point_topic_map:
-                            # max two(one for each interested point) topic names for each vav available
+                            # max two(one for each interested point) topic names
+                            # for each vav available
                             self.unmapped_device_details[ahu_id]["topic_name"][vav_id] = \
                                 self.equip_id_point_topic_map[vav_id]
             elif len(point_mapping[volttron_point_type]) > 1:
