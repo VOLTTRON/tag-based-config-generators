@@ -26,7 +26,9 @@ class ConfigGenerator(BaseConfigGenerator):
                                           connect_params["password"])
         self.device_details = {"ahu": defaultdict(dict),
                                "vav": defaultdict(dict),
-                               "electric_meter": defaultdict(dict)}
+                               "electric_meter": defaultdict(dict),
+                               "lighting": defaultdict(dict),
+                               "occupancy_detector": defaultdict(dict)}
 
     def get_ahu_and_vavs(self):
         ahu_dict = defaultdict(list)
@@ -74,6 +76,39 @@ class ConfigGenerator(BaseConfigGenerator):
                 self.unmapped_device_details[r[0]] = {"type": "vav",
                                                       "error": "Unable to find AHU that feeds vav"}
         return ahu_dict
+
+    def get_lights_by_room(self):
+        room_dict = defaultdict(list)
+        # Only get lights where there is valid controller ip and controller id\
+        # TODO- update query once controller is broken into a separate node similar to VAVs
+        query = ("MATCH (l:Luminaire)-[:hasLocation]->(r:Room) "
+                 "WHERE l.controllerId IS NOT NULL AND l.controller IS NOT NULL "
+                 "RETURN r.name, l.name, l.controller, l.controllerId")
+        result = self.connection.query(query)
+        if result:
+            for r in result:
+                room_dict[r[0]].append(r[1])
+                # for lighting we assume all lights in room are controlled by 1 controller
+                # hence store device id and ip under room id and generate 1 device and registry
+                # config per room
+                if not self.device_details["lighting"].get(r[0]):
+                    self.device_details["lighting"][r[0]]["device_address"]= r[2]
+                    self.device_details["lighting"][r[0]]["device_id"] = r[3]
+        return room_dict
+
+    def get_occ_detector(self, room_id):
+        occ_id = None
+        query = ("MATCH (o:OccupancyDetector)-[:hasLocation]->(r:Room) "
+                 "WHERE o.controllerId IS NOT NULL AND o.controller IS NOT NULL "
+                 "AND r.name = $room_name "
+                 "RETURN o.name, o.controller, o.controllerId")
+        result = self.connection.query(query, parameters={"room_name": room_id})
+        if result:
+            occ_id = result[0][0]
+            if not self.device_details["lighting"].get(room_id):
+                self.device_details["lighting"][room_id]["device_address"] = result[0][1]
+                self.device_details["lighting"][room_id]["device_id"] = result[0][2]
+        return occ_id
 
     def get_building_meter(self):
         raise ValueError("Not implemented")
@@ -135,44 +170,11 @@ class ConfigGenerator(BaseConfigGenerator):
     def get_name_from_id(self, _id):
         return _id
 
-    def generate_registry_config(self, equip_id, equip_type):
-        header = ["Point Name", "Volttron Point Name", "Units", "BACnet Object Type", "Property",
-                  "Writable", "Index", "Notes"]
-        _notes = "auto generated"
-        _property = "presentValue"
-        if equip_type in ["ahu", "vav"]:
-            db_type = equip_type.upper()
-        elif equip_type == "electric_meter":
-            db_type = None # TODO
-        else:
-            raise ValueError(f"Unknown equipment type {equip_type}")
-
-        query = (f"MATCH(p:Point)-[isPointOf]->(a:{db_type}{{name:'{equip_id}'}})"
-                 "RETURN p.name, p.units, p.type, p.`BACnet Object Identifier`;")
-        result = self.connection.query(query)
-        missing = []
-        data = []
-        if result:
-            for r in result:
-                if r[0] and r[1] and r[2] and r[3]:
-                    point_name = r[0]
-                    units = r[1]
-                    point_type = r[2]
-                    # All Input types - AnalogInput, BinaryInput etc. are NOT writeable
-                    writeable = False if point_type.endswith("Input") else True
-                    index = r[3].split(":")[1]
-                    data.append([point_name, point_name, units, point_type, _property,
-                                 writeable, index, _notes])
-                else:
-                    missing.append(r[0])
-            if missing:
-                if not self.unmapped_device_details.get(equip_id):
-                    self.unmapped_device_details[equip_id] = dict()
-                self.unmapped_device_details[equip_id]["type"] = equip_type
-                err = ("Unable to find units, type, and/or Bacnet Object Identifier. "
-                       "Skipping registry config entry for: "
-                       f"{missing}")
-                self.unmapped_device_details[equip_id]["registry_warnings"] = err
+    def generate_registry_config_file(self, equip_id, equip_type, data=None):
+        header = ["Reference Point Name", "Volttron Point Name", "Units", "BACnet Object Type",
+                  "Property", "Writable", "Index", "Notes"]
+        if not data:
+            data = self.generate_registry_config_data(equip_id, equip_type)
         if data:
             filename = os.path.join(self.output_configs,f"registry_{equip_id}.csv")
             with open(filename, "w") as csvfile:
@@ -182,8 +184,92 @@ class ConfigGenerator(BaseConfigGenerator):
             return filename, "csv"
         return None, None
 
+    def generate_registry_config_data(self, equip_id, equip_type, **kwargs):
+        # TODO update for building electring meter once model is updated
+        _notes = "auto generated"
+        _property = "presentValue"
+        query = None
+        query_parameters = None
+        if equip_type in ["ahu", "vav"]:
+            db_type = equip_type.upper()
+        elif equip_type == "electric_meter":
+            db_type = None  # TODO
+        elif equip_type == "lighting":
+            # TODO- is equip id unique globally- i.e. across rooms and controllers? If so
+            #  we could get rid of the special query with additional room match
+            db_type = "Luminaire"
+            room_id = kwargs.get("room_id")
+            if not room_id:
+                raise ValueError("No room_id provided for equip_type lighting")
+            query = (f"MATCH (p:Point)-[isPointOf]->(e:{db_type})-[:hasLocation]->(r:Room) "
+                     f"WHERE e.name STARTS WITH $equip_id AND r.name=$room_id "
+                     "RETURN p.`BACnet Object Name`, p.name, p.units, p.type, p.`BACnet Object "
+                     "Identifier`;")
+            query_parameters = {'equip_id': equip_id, 'room_id': room_id}
+        elif equip_type == "occupancy_detector":
+            # TODO- is equip id unique globally- i.e. across rooms and controllers? If so
+            #  we could get rid of the special query with additional room match
+            db_type = "OccupancyDetector"
+            room_id = kwargs.get("room_id")
+            if not room_id:
+                raise ValueError("No room_id provided for equip_type occupancy_detector")
+            query = (f"MATCH (p:Point)-[isPointOf]->(e:{db_type})-[:hasLocation]->(r:Room) "
+                     f"WHERE e.name STARTS WITH $equip_id AND r.name=$room_id "
+                     "RETURN p.`BACnet Object Name`, p.name, p.units, p.type, p.`BACnet Object "
+                     "Identifier`;")
+            query_parameters = {'equip_id': equip_id, 'room_id': room_id}
+        else:
+            raise ValueError(f"Unknown equipment type {equip_type}")
 
+        if query is None:
+            # default query only based on equip type label and equip id
+            query = (f"MATCH(p:Point)-[isPointOf]->(e:{db_type}) "
+                     f"WHERE e.name = $equip_id "
+                     "RETURN p.`BACnet Object Name`, p.name, p.units, p.type, p.`BACnet Object "
+                     "Identifier`;")
+            query_parameters = {'equip_id': equip_id}
+        result = self.connection.query(query, query_parameters)
+        missing = []
+        data = []
+        if result:
+            for r in result:
+                if r[0] and r[1] and r[2] and r[3] and r[4]:
+                    reference_point_name = r[0]
+                    point_name = r[1]
+                    units = r[2]
+                    point_type = r[3]
+                    # All Input types - AnalogInput, BinaryInput etc. are NOT writeable
+                    writeable = False if point_type.endswith("Input") else True
+                    index = r[4].split(":")[1]
+                    data.append(
+                        [reference_point_name, self.get_volttron_point_name(reference_point_name,
+                                                                            point_name=point_name,
+                                                                            equip_type=equip_type,
+                                                                            **kwargs),
+                         units, point_type,
+                         _property, writeable, index,
+                         _notes])
+                else:
+                    missing.append(r[1])
+            if missing:
+                if not self.unmapped_device_details.get(equip_id):
+                    self.unmapped_device_details[equip_id] = dict()
+                self.unmapped_device_details[equip_id]["type"] = equip_type
+                err = ("Unable to find units, type, Bacnet Object Name and/or Bacnet Object "
+                       "Identifier. Skipping registry config entry for: "
+                       f"{missing}")
+                self.unmapped_device_details[equip_id]["registry_warnings"] = err
+        return data
 
+    def get_volttron_point_name(self, reference_point_name, **kwargs):
+        p = kwargs.get("point_name", None)
+        if p:
+            if kwargs.get("equip_type", "unknown") in ["lighting", "occupancy_detector"]:
+                return f"{reference_point_name.split('_')[0]}_{p}"
+            else:
+                return p
+        else:
+            return reference_point_name
 
 def main():
     if len(sys.argv) != 2:
@@ -194,14 +280,14 @@ def main():
     d.generate_configs()
 
 if __name__ == '__main__':
-    #main()
-    connection = Neo4jConnection("neo4j://localhost:7687", "neo4j", "volttron")
-    test_result = connection.query("MATCH (a:AHU) WHERE not ((a)-[:feeds]->(:VAV)) RETURN a.name;")
-    print(test_result)
-    test_result = connection.query("MATCH (v:VAV) WHERE not ((:AHU)-[:feeds]->(v)) RETURN v.name;")
-    print(test_result)
-    test_result = connection.query("MATCH (a:AHU)-[:feeds]->(v:VAV) RETURN a.name, v.name;")
-    print(test_result)
+    main()
+    # connection = Neo4jConnection("neo4j://localhost:7687", "neo4j", "volttron")
+    # test_result = connection.query("MATCH (a:AHU) WHERE not ((a)-[:feeds]->(:VAV)) RETURN a.name;")
+    # print(test_result)
+    # test_result = connection.query("MATCH (v:VAV) WHERE not ((:AHU)-[:feeds]->(v)) RETURN v.name;")
+    # print(test_result)
+    # test_result = connection.query("MATCH (a:AHU)-[:feeds]->(v:VAV) RETURN a.name, v.name;")
+    # print(test_result)
 
 
     
