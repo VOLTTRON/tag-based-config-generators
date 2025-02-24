@@ -2,6 +2,8 @@ import json
 import os.path
 import sys
 from abc import abstractmethod
+from pathlib import Path
+
 from volttron_config_gen.utils import strip_comments
 
 
@@ -43,6 +45,9 @@ class BaseConfigGenerator:
         self.ahu_topic_pattern = topic_prefix + "{}"
         self.meter_topic_pattern = topic_prefix + "{}"
         self.vav_topic_pattern = topic_prefix + "{ahu}/{vav}"
+        # logical volttron "device" that will have registry config with points of all lights in the
+        # room + point from the occupancy detector of the room
+        self.light_topic_pattern = topic_prefix + "{room}_lights"
 
         self.power_meter_tag = 'siteMeter'
         self.configured_power_meter_id = self.config_dict.get("power_meter_id", "")
@@ -50,8 +55,8 @@ class BaseConfigGenerator:
 
         self.power_meter_id = None
 
-        # If there are any vav's that are not mapped to a AHU use this dict to give additional details for user
-        # to help manually find the corresponding ahu
+        # If there are any vav's that are not mapped to a AHU use this dict to give
+        # additional details for user to help manually find the corresponding ahu
         self.unmapped_device_details = dict()
 
         self.config_template = self.config_dict.get("config_template")
@@ -90,6 +95,16 @@ class BaseConfigGenerator:
         """
         pass
 
+    def get_lights_by_room(self):
+        # not all implementation might have lighting info
+        # return empty dict
+        return dict()
+
+    def get_occupancy_detector(self, room_id):
+        # not all implementation might have lighting info
+        # return None
+        return None
+
     def generate_configs(self):
         ahu_and_vavs = self.get_ahu_and_vavs()
         if isinstance(ahu_and_vavs, dict):
@@ -114,6 +129,37 @@ class BaseConfigGenerator:
                 json.dump(result_dict, outfile, indent=4)
         except ValueError as e:
             self.unmapped_device_details["building_power_meter"] = {"error": f"{e}"}
+
+        try:
+            room_lights = self.get_lights_by_room()
+            if isinstance(room_lights, dict):
+                iterator = room_lights.items()
+            else:
+                iterator = room_lights
+            for room_id, lights in iterator:
+                try:
+                    occ_detector = self.get_occupancy_detector(room_id)
+                except Exception as e:
+                    self.unmapped_device_details[f"{room_id}_occupancy_detector"] = {
+                        "error": f"Unable to get occupancy detector for and room  {room_id}. "
+                                 f"Exception{e}"}
+                    continue
+                try:
+                    room_name, result_dict = self.generate_room_light_configs(room_id,
+                                                                              lights,
+                                                                              occ_detector)
+                except Exception as e:
+                    self.unmapped_device_details[f"{room_id}_lights"] = {
+                        "error": f"Unable to get lights details for room  {room_id}. "
+                                 f"Exception: {e}"}
+                    continue
+                if not result_dict:
+                    continue  # no valid configs, move to the next room
+                else:
+                    with open(f"{self.output_configs}/{room_name}_lights.json", 'w') as outfile:
+                        json.dump(result_dict, outfile, indent=4)
+        except ValueError as e:
+            self.unmapped_device_details["lights"] = {"error": f"Unable to get lights and room {e}"}
 
         # If unmapped devices exists, write additional unmapped_devices.txt that gives more info to user to map manually
         if self.unmapped_device_details:
@@ -149,25 +195,106 @@ class BaseConfigGenerator:
             topic = self.ahu_topic_pattern.format(ahu_name)
             # replace right variables in driver_config_template
             driver_config = self.generate_config_from_template(ahu_id, "ahu")
-            if driver_config:
-                final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
-            topic_pattern = self.vav_topic_pattern.format(ahu=ahu_name, vav='{vav}')  # fill ahu, leave vav variable
+            result = self.generate_registry_config(driver_config, ahu_id, "ahu", final_mapper)
+            if result:
+                final_mapper[self.driver_vip].append({"config-name": topic,
+                                                      "config": driver_config})
+            # fill ahu, leave vav variable
+            vav_topic = self.vav_topic_pattern.format(ahu=ahu_name, vav='{vav}')
         else:
-            topic_pattern = self.vav_topic_pattern.replace("{ahu}/", "")  # ahu
+            vav_topic = self.vav_topic_pattern.replace("{ahu}/", "")  # ahu
         # Now loop through and do the same for all vavs
         for vav_id in vavs:
             vav = self.get_name_from_id(vav_id)
-            topic = topic_pattern.format(vav=vav)
+            topic = vav_topic.format(vav=vav)
             # replace right variables in driver_config_template
             driver_config = self.generate_config_from_template(vav_id, "vav")
-            if driver_config:
-                final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
+            result = self.generate_registry_config(driver_config, vav_id, "vav", final_mapper)
+            if result:
+                final_mapper[self.driver_vip].append({"config-name": topic,
+                                                      "config": driver_config})
+
+        if not final_mapper[self.driver_vip]:
+            final_mapper = None
         return ahu_name, final_mapper
+
+    def generate_room_light_configs(self, room_id, lights, occ_detector):
+        if not room_id or not lights:
+            return None, None
+
+        final_mapper = dict()
+        final_mapper[self.driver_vip] = []
+        room_name = ""
+
+        room_name = self.get_name_from_id(room_id)
+        topic = self.light_topic_pattern.format(room=room_name)
+        # replace right variables in driver_config_template
+        # there will be one logical device per room for all lights + occupancy detector in it
+        driver_config = self.generate_config_from_template(room_id, "lighting")
+
+        # Now loop through and do the same for all vavs
+        all_points = []
+        for light_id in lights:
+            if driver_config.get("registry_config"):
+                # replace right variables in driver_config_template
+                light_points = self.generate_registry_config_data(light_id, "lighting",
+                                                                  room_id=room_id)
+                all_points.extend(light_points)
+        if occ_detector:
+            if driver_config.get("registry_config"):
+                # replace right variables in driver_config_template
+                occ_detector_points = self.generate_registry_config_data(occ_detector,
+                                                                         "occupancy_detector",
+                                                                         room_id=room_id)
+                all_points.extend(occ_detector_points)
+        if all_points:
+            final_mapper[self.driver_vip].append({"config-name": topic, "config": driver_config})
+            self.generate_registry_config(driver_config, f"{room_name}_lights", "lighting",
+                                          final_mapper, all_points)
+        if not final_mapper[self.driver_vip]:
+            final_mapper = None
+        return room_name, final_mapper
+
+    def generate_registry_config(self, driver_config, equip_id, equip_type, final_mapper,
+                                 data=None):
+        if not driver_config:
+            return False
+        if driver_config.get("registry_config"):
+            # generate registry config
+            rfile, rtype = self.generate_registry_config_file(equip_id, equip_type, data)
+            if not rfile:
+                return False
+            driver_config["registry_config"] = f"config://registry_config/{equip_id}.{rtype}"
+            final_mapper[self.driver_vip].append(
+                {"config-name": f"registry_config/{equip_id}.{rtype}",
+                 "config": rfile,
+                 "config-type": rtype})
+        return True
 
     @abstractmethod
     def generate_config_from_template(self, equip_id, equip_type):
         pass
 
-    @abstractmethod
-    def get_name_from_id(self, id):
-        pass
+    def get_name_from_id(self, _id):
+        return _id
+
+    def get_volttron_point_name(self, reference_point_name, **kwargs):
+        return reference_point_name
+
+    def generate_registry_config_file(self, equip_id, equip_type, data=None):
+        """
+        Method to be overridden by driver config generators for bacnet, modbus etc.
+        where a registry config file is needed.
+        method should return registry config name and config file and config file type
+        config name returned will be included in driver config as config://<config_name>
+        """
+        raise NotImplementedError
+
+    def generate_registry_config_data(self, equip_id, equip_type, **kwargs):
+        """
+        Method to be overridden by driver config generators for bacnet, modbus etc.
+        where a registry config file is needed.
+        method should return registry config name and config file and config file type
+        config name returned will be included in driver config as config://<config_name>
+        """
+        raise NotImplementedError

@@ -126,7 +126,7 @@ class ConfigGenerator(BaseConfigGenerator):
             if cursor:
                 cursor.close()
 
-    def get_point_name(self, equip_id, equip_type, point_key):
+    def get_point_name(self, equip_id, equip_type, point_key, **kwargs):
         topic = self.get_topic_by_point_type(equip_id, equip_type, point_key)
         point_name = self.get_point_name_from_topic(topic)
         return point_name
