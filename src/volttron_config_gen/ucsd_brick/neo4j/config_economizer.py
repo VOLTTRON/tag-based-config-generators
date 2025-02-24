@@ -1,7 +1,7 @@
 import sys
 
 from volttron_config_gen.base.config_economizer import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, get_points_for_equip
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_points_for_equip
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -37,9 +37,10 @@ class ConfigGenerator(BaseConfigGenerator):
             raise ValueError(f"Unknown equipment type {equip_type}")
 
         if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
-            self.equip_point_label_name_map[equip_id] = get_points_for_equip(
-                equip_id, equip_type, self.point_meta_map.keys(), self.point_meta_map,
-                self.connection)
+            self.equip_point_label_name_map[equip_id] = query_points_for_equip(equip_id, equip_type,
+                                                                               self.point_meta_map.keys(),
+                                                                               self.point_meta_map,
+                                                                               self.connection)
 
         # Done finding interested points for a given equip id
         return self.equip_point_label_name_map[equip_id].get(point_key)

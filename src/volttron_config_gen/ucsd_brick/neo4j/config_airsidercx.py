@@ -2,7 +2,7 @@ import sys
 from collections import defaultdict
 
 from volttron_config_gen.base.config_airsidercx import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, get_points_for_equip
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, query_points_for_equip
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -57,8 +57,10 @@ class ConfigGenerator(BaseConfigGenerator):
         # example db doesn't have any indexes?
         #return query_point_name(equip_id, equip_type.upper(), point_labels, self.connection)
         if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
-            self.equip_point_label_name_map[equip_id] = get_points_for_equip(
-                equip_id, equip_type, interested_point_types, self.point_meta_map, self.connection)
+            self.equip_point_label_name_map[equip_id] = query_points_for_equip(equip_id, equip_type,
+                                                                               interested_point_types,
+                                                                               self.point_meta_map,
+                                                                               self.connection)
         # Done finding interested points for a given equip id
         return self.equip_point_label_name_map[equip_id].get(point_key)
 

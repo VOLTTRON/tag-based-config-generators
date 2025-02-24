@@ -100,7 +100,7 @@ class BaseConfigGenerator:
         # return empty dict
         return dict()
 
-    def get_occ_detector(self, room_id):
+    def get_occupancy_detector(self, room_id):
         # not all implementation might have lighting info
         # return None
         return None
@@ -138,7 +138,7 @@ class BaseConfigGenerator:
                 iterator = room_lights
             for room_id, lights in iterator:
                 try:
-                    occ_detector = self.get_occ_detector(room_id)
+                    occ_detector = self.get_occupancy_detector(room_id)
                 except Exception as e:
                     self.unmapped_device_details[f"{room_id}_occupancy_detector"] = {
                         "error": f"Unable to get occupancy detector for and room  {room_id}. "

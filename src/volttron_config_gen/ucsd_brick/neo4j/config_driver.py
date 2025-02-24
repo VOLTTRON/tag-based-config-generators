@@ -6,7 +6,9 @@ import re
 from collections import defaultdict
 
 from volttron_config_gen.base.config_driver import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import (Neo4jConnection,
+                                                              query_lights_from_room,
+                                                              query_occupancy_detector)
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -81,10 +83,7 @@ class ConfigGenerator(BaseConfigGenerator):
         room_dict = defaultdict(list)
         # Only get lights where there is valid controller ip and controller id\
         # TODO- update query once controller is broken into a separate node similar to VAVs
-        query = ("MATCH (l:Luminaire)-[:hasLocation]->(r:Room) "
-                 "WHERE l.controllerId IS NOT NULL AND l.controller IS NOT NULL "
-                 "RETURN r.name, l.name, l.controller, l.controllerId")
-        result = self.connection.query(query)
+        result = query_lights_from_room(self.connection)
         if result:
             for r in result:
                 room_dict[r[0]].append(r[1])
@@ -96,18 +95,12 @@ class ConfigGenerator(BaseConfigGenerator):
                     self.device_details["lighting"][r[0]]["device_id"] = r[3]
         return room_dict
 
-    def get_occ_detector(self, room_id):
-        occ_id = None
-        query = ("MATCH (o:OccupancyDetector)-[:hasLocation]->(r:Room) "
-                 "WHERE o.controllerId IS NOT NULL AND o.controller IS NOT NULL "
-                 "AND r.name = $room_name "
-                 "RETURN o.name, o.controller, o.controllerId")
-        result = self.connection.query(query, parameters={"room_name": room_id})
-        if result:
-            occ_id = result[0][0]
+    def get_occupancy_detector(self, room_id):
+        occ_id, device_addr, device_id = query_occupancy_detector(room_id, self.connection)
+        if occ_id:
             if not self.device_details["lighting"].get(room_id):
-                self.device_details["lighting"][room_id]["device_address"] = result[0][1]
-                self.device_details["lighting"][room_id]["device_id"] = result[0][2]
+                self.device_details["lighting"][room_id]["device_address"] = device_addr
+                self.device_details["lighting"][room_id]["device_id"] = device_id
         return occ_id
 
     def get_building_meter(self):

@@ -7,11 +7,11 @@
          }
      },
 
-     # optional. if not provided will be derived from site_id.split('.')[-2]
+     # optional. should match what is used for corresponding driver config
      #"campus": "campus1",
 
-     # optional. if not provided will be derived from site_id.split('.')[-1]
-     "building": "UCSD",
+     # optional. should match what is used for corresponding driver config
+     "building": "ucsd",
 
      ######### Configuration to identify whole building power meter. This required for ILC.  ##################
      ######### SHOULD MATCH the device name used by driver so that topic names match. ###########
@@ -40,16 +40,19 @@
             "WholeBuildingPower": "ActivePowerSensor"
             },
         "vav": {
-            "ZoneCoolingTemperatureSetPoint":  ["EffectiveAirTemperatureCoolingSetpoint", "DischargeAirTemperatureSensor"],
-            "MinimumAirFlow": "SupplyAirFlow",
-            #  "ZoneAirFlowSetpoint": "SaFlow", # Not used for anacostia. Derived as ZoneAirFlow*MaxAirFlow/100
-            "ZoneAirFlow": "SupplyAirFlow",
-            "MaxAirFlow": "ExhaustAirFlowSensor",
-            "ZoneTemperature": "DischargeAirTemperatureSensor",
+            "CoolingOutputPercent": "CoolingOutputPercent",
+            "AirFlowSetPoint": "SupplyAirFlowSetpoint",
+            "ZoneTemperature": "ZoneTemperature",
+            "EffectiveZoneCoolingTemperatureSetPoint": "EffectiveAirTemperatureCoolingSetpoint",
+            "OccupiedZoneCoolingTemperatureSetPoint":  ["OccupiedCoolingTemperatureSetpoint"],
             "OccupancyCommand": "OccupancyStatus"
             },
         "lighting": {
-
+            "DimmingLevelOutput": "LuminanceCommand",
+            "Power": "ActivePowerSensor"
+        },
+        "occupancy_detector":{
+            "OccupancySensor": "OccupancySensor"
         }
      },
 
@@ -69,6 +72,8 @@
      #  "power_meter": {
      #  },
      #  "lighting": {
+     #      "DimmingLevelOutput" : "default_dim_level",
+     #      "Power": "DefaultActivePowerSensor"
      #  }
      #},
 
@@ -90,7 +95,6 @@
         # enable validation for this configuration file
         # Validation of pairwise_criteria uses ilc/utils/validate_pairwise.py
 
-        #"device_type": "vav",
         "validate_pairwise_criteria": false,
 
         # ########### ilc config template ########
@@ -115,13 +119,31 @@
                     "minimum": 70.0,
                     "maximum": 76.0,
                     # only one curtail setting and one point per curtail setting?
-                    "point": "ZoneCoolingTemperatureSetPoint"
+                    "point": "OccupiedZoneCoolingTemperatureSetPoint"
                 },
                 "device_status": {
                     # More than one curtail possible?
                     "curtail": {
-                        "device_status_args": ["MinimumAirFlow", "ZoneAirFlow", "MaxAirFlow", "OccupancyCommand"],
-                        "condition": ["(ZoneAirFlow*MaxAirFlow/100>MinimumAirFlow) & (Eq(OccupancyCommand, 0))"]
+                        "device_status_args": ["CoolingOutputPercent", "OccupancyCommand"],
+                        "condition": ["(CoolingOutputPercent>10) & (Eq(OccupancyCommand, 0))"]
+                    }
+                }
+            },
+            "lighting": {
+                "device_topic": "",
+                "device_status": {
+                    "curtail": {
+                        "condition": ["DimmingLevelOutput > 0.7"],
+                        "device_status_args": ["DimmingLevelOutput"]
+                    }
+                },
+                "curtail_settings": {
+                    "point": "DimmingLevelOutput",
+                    "value": 0.7,
+                    "control_method": "value",
+                    "load": {
+                        "operation": "(DimmingLevelOutput-0.7)*1438.0",
+                        "equation_args": ["DimmingLevelOutput"]
                     }
                 }
             }
@@ -137,31 +159,48 @@
                 },
                 "available_zone_airflow_ratio": {
                         "operation_type": "formula",
-                        "operation": "(ZoneAirFlow/MinimumAirFlow) - 1",
+                        "operation": "CoolingOutputPercent",
                         "minimum": 0.0,
                         "maximum": 10.0,
-                        "operation_args": ["MinimumAirFlow, ZoneAirFlow"]
+                        "operation_args": ["CoolingOutputPercent"]
                         },
                 "box_size": {
                         "operation_type": "formula",
-                        "operation": "MaxAirFlow/10",
+                        "operation": "AirFlowSetPoint*(100.0/CoolingOutputPercent)",
                         "minimum": 0.0,
                         "maximum": 100.0,
-                        "operation_args": ["MaxAirFlow"]
+                        "operation_args": ["AirFlowSetPoint", "CoolingOutputPercent"]
                     },
                 "zonetemperature_setpoint": {
-                        "operation": "1/(ZoneTemperature - ZoneCoolingTemperatureSetPoint)",
+                        "operation": "1/(ZoneTemperature - EffectiveZoneCoolingTemperatureSetPoint)",
                         "operation_type": "formula",
                         "operation_args": {
                             "always": [
                                 "ZoneTemperature"
                             ],
                             "nc": [
-                                "ZoneCoolingTemperatureSetPoint"
+                                "EffectiveZoneCoolingTemperatureSetPoint"
                             ],
                             "minimum": 0.0,
                             "maximum": 10.0
                         }
+                }
+            },
+            "lighting": {
+                "room_type": {
+                    "map_key": "Conference Room",
+                    "operation_type": "mapper",
+                    "dict_name": "zone_type"
+                },
+                "lighting_level": {
+                    "operation": "DimmingLevelOutput",
+                    "operation_type": "formula",
+                    "operation_args": ["DimmingLevelOutput"]
+                },
+                "rated_power": {
+                    "operation": "Power*100/DimmingLevelOutput",
+                    "operation_type": "formula",
+                    "operation_args": ["Power", "DimmingLevelOutput"]
                 }
             }
         },

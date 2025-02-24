@@ -92,7 +92,7 @@ class ConfigGenerator(BaseConfigGenerator):
         return point_name_part
         # return re.split(r"[\.|:]", point_name_part)[-1]
 
-    def get_point_name(self, equip_id, equip_type, volttron_point_type):
+    def get_point_name(self, equip_id, equip_type, volttron_point_type, **kwargs):
         if not self.equip_id_point_map:
             # Load it once and use it from map from next call
             ahus = set()

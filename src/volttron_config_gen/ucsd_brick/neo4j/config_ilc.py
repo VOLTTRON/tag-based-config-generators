@@ -1,7 +1,11 @@
 import sys
+from collections import defaultdict
 
 from volttron_config_gen.base.config_ilc import BaseConfigGenerator
-from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import Neo4jConnection, get_points_for_equip
+from volttron_config_gen.ucsd_brick.neo4j.neo4j_utils import (Neo4jConnection,
+                                                              query_points_for_equip,
+                                                              query_lights_from_room,
+                                                              query_occupancy_detector)
 
 
 class ConfigGenerator(BaseConfigGenerator):
@@ -23,33 +27,25 @@ class ConfigGenerator(BaseConfigGenerator):
         self.equip_point_label_name_map = dict()
 
     def get_building_power_meter(self):
-        # if self.configured_power_meter_id:
-        #     query = f"SELECT tags->>'id' \
-        #               FROM {self.equip_table} \
-        #               WHERE tags->>'id' = '{self.configured_power_meter_id}'"
-        # else:
-        #     query = f"SELECT tags->>'id' \
-        #                           FROM {self.equip_table} \
-        #                           WHERE tags->>'{self.power_meter_tag}' is NOT NULL"
-        # if self.site_id:
-        #     query = query + f" AND tags->>'siteRef'='{self.site_id}' "
-        # print(query)
-        #
-        # result = self.execute_query(query)
-        # if result:
-        #     if len(result) == 1:
-        #         return result[0][0]
-        #     if len(result) > 1 and not self.configured_power_meter_id:
-        #         raise ValueError(f"More than one equipment found with the tag {self.power_meter_tag}. Please "
-        #                          f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
-        #                          f"building power meter")
-        #     if len(result) > 1 and self.configured_power_meter_id:
-        #         raise ValueError(f"More than one equipment found with the id {self.configured_power_meter_id}. Please "
-        #                          f"add 'power_meter_id' parameter to configuration to uniquely identify whole "
-        #                          f"building power meter")
-        # return ""
-
         # TODO current model doesn't have building power meter. Update after model is updated
+        # Example query based on  example from https://docs.brickschema.org/modeling/meters.html
+        #     bldg:building_power_sensor a brick:Electric_Power_Sensor ;
+        #         brick:hasUnit unit:KiloW ;
+        #         brick:isPointOf bldg:main-meter ;
+        #         brick:timeseries [ brick:hasTimeseriesId "fd64fbc8-0742-4e1e-8f88-e2cd8a3d78af" ] .
+        #
+        #     bldg:mybldg a brick:Building ;
+        #         brick:isMeteredBy bldg:main-meter .
+        #     bldg:main-meter a brick:Building_Electrical_Meter .
+
+        # Query model (modification - would it be directly linked to building or a room in a
+        # building?)
+        # q = ("MATCH (e:Building_Electrical_Meter)-[:hasLocation]-(b:Building) "
+        #      "WHERE b.name = $building"
+        #      "RETURN e.name;")
+        # result = self.connection.query(q, parameters={'building':self.building})
+        # if result:
+        #     return result[0][0]
         return ""
 
     def get_building_power_point(self):
@@ -74,14 +70,16 @@ class ConfigGenerator(BaseConfigGenerator):
         return self.vav_ahu_list
 
 
-    def get_point_name(self, equip_id, equip_type, point_key):
-        if not equip_type or equip_type.upper() not in ["AHU", "VAV", "POWER_METER"]:
+    def get_point_name(self, equip_id, equip_type, point_key, **kwargs):
+        if not equip_type or equip_type not in ["ahu", "vav", "power_meter", "lighting",
+                                                "occupancy_detector"]:
             raise ValueError(f"Unknown equipment type {equip_type}")
-
+        if not equip_id:
+            return None
         if not self.equip_point_label_name_map or not self.equip_point_label_name_map.get(equip_id):
-            self.equip_point_label_name_map[equip_id] = get_points_for_equip(
+            self.equip_point_label_name_map[equip_id] = query_points_for_equip(
                 equip_id, equip_type, self.point_meta_map[equip_type].keys(),
-                self.point_meta_map[equip_type], self.connection)
+                self.point_meta_map[equip_type], self.connection, **kwargs)
 
         # Done finding interested points for a given equip id
         return self.equip_point_label_name_map[equip_id].get(point_key)
@@ -89,6 +87,20 @@ class ConfigGenerator(BaseConfigGenerator):
     def get_name_from_id(self, _id):
         return _id
 
+
+    def get_lights_by_room(self):
+        room_dict = defaultdict(list)
+        # Only get lights where there is valid controller ip and controller id\
+        # TODO- update query once controller is broken into a separate node similar to VAVs
+        result = query_lights_from_room(self.connection)
+        if result:
+            for r in result:
+                room_dict[r[0]].append(r[1])
+        return room_dict
+
+    def get_occ_detector(self, room_id):
+        occ_id, device_addr, device_id = query_occupancy_detector(room_id, self.connection)
+        return occ_id
 
 def main():
     if len(sys.argv) != 2:

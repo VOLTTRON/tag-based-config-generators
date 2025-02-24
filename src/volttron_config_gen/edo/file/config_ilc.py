@@ -77,7 +77,7 @@ class ConfigGenerator(BaseConfigGenerator):
                 vav_ahu_mapping[vav['EquipmentID']] = ""
         return vav_ahu_mapping
 
-    def get_point_name(self, equip_id, equip_type, point_key):
+    def get_point_name(self, equip_id, equip_type, point_key, **kwargs):
         if equip_type == "ahu":
             df = self.ahu_points
         elif equip_type == "vav":
