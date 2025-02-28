@@ -27,7 +27,7 @@ class BaseConfigGenerator:
                     self.config_dict = json.loads(strip_comments(f.read()))
             except Exception:
                 raise
-
+        self.lighting_actuator_config = {}
         self.site_id = self.config_dict.get("site_id", "")
         self.building = self.config_dict.get("building", "")
         self.campus = self.config_dict.get("campus", "")
@@ -213,13 +213,19 @@ class BaseConfigGenerator:
                     "type": "building power meter",
                     "error": err
                 }
+
         for device_type in device_types:
-            self.ilc_template["clusters"].append({
+            default_config = {
                 "device_control_config": f"config://{device_type}_control.config",
                 "device_criteria_config": f"config://{device_type}_criteria.config",
                 "pairwise_criteria_config": f"config://{device_type}_criteria_matrix.json",
                 "cluster_priority": 1.0
-            })
+            }
+            c = self.config_template.get("ilc_config").get("cluster_config")
+            if c:
+                default_config.update(c.pop(device_type, {}))
+            self.ilc_template["clusters"].append(default_config)
+        self.ilc_template.pop("cluster_config")
         # Generate ilc config file and metadata
         self.ilc_template["power_meter"]["device_topic"] = self.topic_prefix + self.power_meter_name
         self.ilc_template["power_meter"]["point"] = self.building_power_point
@@ -282,10 +288,10 @@ class BaseConfigGenerator:
                     control_config[vav_topic] = {vav: self.update_control_config(config,
                                                                                  point_mapping)}
                     criteria_config[vav_topic] = {vav: self.update_criteria_config(curtail_config,
-                                                                                   point_mapping,
-                                                                                   volttron_point_types)
+                                                                                   point_mapping)
                                                   }
             elif device_type == "lighting":
+                print(f"volttron_point_types is {volttron_point_types}")
                 room_lights = self.get_lights_by_room()
                 if isinstance(room_lights, dict):
                     iterator = room_lights.items()
@@ -317,7 +323,7 @@ class BaseConfigGenerator:
                                                                                  occ_detector,
                                                                                  occ_points,
                                                                                  room_id=room_id)
-                        volttron_point_types.extend(occ_points)
+                        #volttron_point_types.extend(occ_points)
                         point_mapping.update(occ_mapping)
                         missing_points.extend(occ_missing_points)
 
@@ -329,14 +335,19 @@ class BaseConfigGenerator:
                                      f"points and their configured mapping: {missing_points}"}
                         continue
 
-                    # If all necessary points are found go ahead and add it to control config
+                    # If all necessary points are found go ahead and add it to configs
+                    self.lighting_actuator_config[room_light_topic] = self.get_lighting_points(
+                        room_id, lights, point_mapping['DimmingLevelOutput'])
                     control_config[room_light_topic] = {
-                        room_light_topic: self.update_control_config(config, point_mapping)}
+                        room_light_topic: self.update_control_config(config, point_mapping,
+                                                                     room_id, lights)}
 
                     criteria_config[room_light_topic] = {
                         room_light_topic: self.update_criteria_config(curtail_config,
                                                                       point_mapping,
-                                                                      volttron_point_types)}
+                                                                      room_id, lights)}
+
+
             if criteria_config:
                 criteria_config['mappers'] = mappers
                 file_name = f"{device_type}_criteria.config"
@@ -373,70 +384,173 @@ class BaseConfigGenerator:
                                       f"({self.point_meta_map[device_type][volttron_point_type]})")
         return point_mapping, missing_points
 
-    @staticmethod
-    def update_control_config(config, point_mapping):
+
+    def update_control_config(self, config, point_mapping, room_id=None, lights=None):
         volttron_point = config["curtail_settings"]["point"]
+        # For now this is a single point due to ILC limitation
+        # work around is the lighting actuator config
         config["curtail_settings"]["point"] = point_mapping[volttron_point]
+
+        if isinstance(config["curtail_settings"]["load"], dict):
+            args = config["curtail_settings"]["load"]['equation_args']
+            v_conditions = [config["curtail_settings"]["load"]["operation"]]
+            point_list, updated_conditions = self.substitute_point_names(
+                args, v_conditions, point_mapping, room_id, lights)
+            config["curtail_settings"]["load"]["equation_args"] = point_list
+            config["curtail_settings"]["load"]["operation"] = updated_conditions[0]
         # More than 1 curtail possible? should we loop through?
-        volttron_point_list = config["device_status"]["curtail"]["device_status_args"]
-        # sort the list of point before doing find and replace of volttron point name with actual point names
-        # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
-        volttron_point_list.sort(key=len)
+        args = config["device_status"]["curtail"]["device_status_args"]
         v_conditions = config["device_status"]["curtail"]["condition"]
-        updated_conditions = []
-        for condition in v_conditions:
-            for point in volttron_point_list:
-                try:
-                    condition = condition.replace(point, point_mapping[point])
-                except Exception as e:
-                    raise Exception(f"Exception replacing point names in curtail conditions {e}")
-            updated_conditions.append(condition)
-        point_list = [point_mapping[point] for point in volttron_point_list]
+        point_list, updated_conditions = self.substitute_point_names(args, v_conditions,
+                                                                     point_mapping, room_id,
+                                                                     lights)
         # replace curtail values with actual point names
         config["device_status"]["curtail"]["device_status_args"] = point_list
         config["device_status"]["curtail"]["condition"] = updated_conditions
         return config
 
-    def update_criteria_config(self, curtail_config, point_mapping, volttron_point_types):
+    def update_criteria_config(self, curtail_config, point_mapping, room_id=None, lights=None):
         for key, value_dict in curtail_config.items():
             if key in ["room_type", "device_topic"]:
                 continue
             # else it is an operation - look for operation and operation_args and replace
             # volttron point names with actual point names
 
-            # Replace in "operation"
-            value_dict["operation"] = self.replace_point_names(value_dict["operation"],
-                                                               point_mapping,
-                                                               volttron_point_types)
+            value_dict["operation_args"], value_dict["operation"] = self.substitute_point_names(
+                value_dict["operation_args"], value_dict["operation"], point_mapping, room_id,
+                lights)
 
-            # Replace in "operation_args"
-            if isinstance(value_dict["operation_args"], dict):
-                value_dict["operation_args"]["always"] = self.replace_point_names(
-                    value_dict["operation_args"]["always"], point_mapping,
-                    volttron_point_types)
-                value_dict["operation_args"]["nc"] = self.replace_point_names(
-                    value_dict["operation_args"]["nc"], point_mapping,
-                    volttron_point_types)
-            else:
-                # it's a list
-                value_dict["operation_args"] = self.replace_point_names(
-                    value_dict["operation_args"], point_mapping, volttron_point_types)
         return curtail_config
 
-    @staticmethod
-    def replace_point_names(search_obj, point_mapping, volttron_point_list):
-        if isinstance(search_obj, str):
-            for point in volttron_point_list:
-                search_obj = search_obj.replace(point, point_mapping[point])
-            return search_obj
+    def substitute_point_names(self, v_args, v_conditions, point_mapping, room_id=None,
+                               lights=None):
+        expand_point_names = False
+        volttron_point_list =[]
+        point_list = []
 
+        # Step1 parse all v_args and collate list of volttron points and points used in conditions
+        if isinstance(v_args, dict):
+            args_dict = v_args
         else:
-            new_list = []
-            for search_str in search_obj:
-                for point in volttron_point_list:
-                    search_str = search_str.replace(point, point_mapping[point])
-                new_list.append(search_str)
-            return new_list
+            args_dict = {"dummy": v_args}
+
+        for k, args in args_dict.items():
+            if k not in ["always", "nc", "dummy"]:
+                continue
+            if isinstance(args, list):
+                vpoint_list = args
+            elif isinstance(args, str):
+                if args.startswith("LIST("):
+                    vpoint_list = args[5: -1].split(",")
+                    expand_point_names = True
+                else:
+                    vpoint_list = [args]
+            else:
+                raise ValueError("Invalid operation_args type. Should be string or list")
+
+            args_dict[k] = []
+            for v_point in vpoint_list:
+                v_point = v_point.strip()
+                volttron_point_list.append(v_point)
+                point_list.append(point_mapping[v_point])
+                if expand_point_names:
+                    args_dict[k].extend(self.get_lighting_points(room_id, lights,
+                                                                 point_mapping[v_point]))
+                else:
+                    args_dict[k].append(point_mapping[v_point])
+
+        # Step2 - replace points in conditions, expand points for lighting if it is an aggregate
+        # operation - currently supported - SUM(condition) or AVG(condition)
+
+        # sort the list of point before doing find and replace of volttron point name with actual point names
+        # so that we avoid matching substrings. For example find and replace ZoneAirFlowSetpoint before ZoneAirFlow
+        volttron_point_list.sort(key=len)
+        updated_conditions = []
+        if isinstance(v_conditions, str):
+            v_conditions = [v_conditions]
+
+        for condition in v_conditions:
+            for point in volttron_point_list:
+                point = point.strip()
+                try:
+                    condition = condition.replace(point, point_mapping[point])
+                except Exception as e:
+                    raise Exception(f"Exception replacing point names in curtail conditions {e}")
+            updated_conditions.append(condition)
+
+        if expand_point_names:
+            # args and conditions should be expanded to multiple points  # args will always be a list
+            expanded_conditions = []
+            for c in updated_conditions:
+                if c.startswith('AVG(') or c.startswith('SUM('):
+                    c_list = []
+                    for light in lights:
+                        # will start with SUM or AVG - only supported methods
+                        index_open = 3 # index of open paranthesis
+                        index_close = BaseConfigGenerator.find_closing_parenthesis(c, index_open)
+                        c1 = c[4:index_close].strip()
+                        if c1.find(' ') > 0:
+                            # may be not a single point name but an expression. enclose in ()
+                            c1 = f"({c1})"
+                        for p in point_list:
+                            c1 = c1.replace(p, self.get_volttron_point_name(light, point_name=p,
+                                                                            equip_type="lighting"))
+                        c_list.append(c1)  # condition specific to 1 light
+                    if c.startswith("SUM"):
+                        expanded_conditions.append(" + ".join(c_list)[:-1])
+                    else:
+                        expanded_conditions.append("(" + " + ".join(c_list)+ f")/{len(lights)}" +
+                                                   ")")
+                else:
+                    expanded_conditions.append(c)
+            updated_conditions = expanded_conditions
+
+        if isinstance(v_args, dict):
+            return args_dict, updated_conditions
+        else:
+            return args_dict["dummy"], updated_conditions
+
+
+
+    def generate_generate_lighting_actuator_config(self):
+
+        if self.lighting_actuator_config:
+            file_name = "lighting_actuator.config"
+            file_path = os.path.abspath(os.path.join(self.output_configs, file_name))
+            with open(file_path, 'w') as outfile:
+                json.dump(self.lighting_actuator_config, outfile, indent=4)
+            self.config_metadata_dict[self.ilc_agent_vip].append(
+                {"config-name": file_name, "config": file_path})
+        else:
+            self.unmapped_device_details["lighting_actuator"] = {
+                "type": "lighting",
+                "error": f"No lighting actuator config was generated."
+                         f" Config should be generated with format "
+                         "{'campus/building/room1': LIST(DimmingLevelOutput), ..}"}
+
+    @staticmethod
+    def find_closing_parenthesis(s, open_pos):
+        # Ensure the given position is an opening parenthesis
+        if s[open_pos] != '(':
+            raise ValueError(
+                "The character at the given position is not an opening parenthesis.")
+
+        # Initialize a counter for open parentheses
+        open_count = 1
+
+        # Iterate through the string starting from the next character
+        for i in range(open_pos + 1, len(s)):
+            if s[i] == '(':
+                open_count += 1
+            elif s[i] == ')':
+                open_count -= 1
+
+            # When open_count reaches zero, we found the matching closing parenthesis
+            if open_count == 0:
+                return i
+
+        # If no matching closing parenthesis is found
+        raise ValueError("No matching closing parenthesis found.")
 
     @abstractmethod
     def get_building_power_meter(self):
@@ -449,7 +563,7 @@ class BaseConfigGenerator:
     @abstractmethod
     def get_point_name(self, equip_id, equip_type, point_key, **kwargs):
         pass
-    
+
     @abstractmethod
     def get_name_from_id(self, id):
         pass
@@ -475,3 +589,9 @@ class BaseConfigGenerator:
         # return None
         # specific implementations should override
         return None
+
+    def get_volttron_point_name(self, reference_point_name, **kwargs):
+        return reference_point_name
+
+    def get_lighting_points(self, room_id, lights, point_name)->list[str]:
+        pass

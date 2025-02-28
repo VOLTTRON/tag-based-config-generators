@@ -99,6 +99,17 @@
 
         # ########### ilc config template ########
         "ilc_config":{
+            # device specific cluster config
+            "cluster_config": {
+                "vav":{
+                    "cluster_priority": 0.5,
+                    "cluster_actuator": "platform.actuator"
+                },
+                "lighting":{
+                    "cluster_priority": 0.5,
+                    "cluster_actuator": "lighting.actuator"
+                }
+            },
             "demand_limit": "TRIGGER",
             "simulation_running": false,
             "control_time": 20,
@@ -133,8 +144,8 @@
                 "device_topic": "",
                 "device_status": {
                     "curtail": {
-                        "condition": ["DimmingLevelOutput > 0.7"],
-                        "device_status_args": ["DimmingLevelOutput"]
+                        "condition": ["AVG(DimmingLevelOutput) > 70"],
+                        "device_status_args": "LIST(DimmingLevelOutput)"
                     }
                 },
                 "curtail_settings": {
@@ -142,8 +153,14 @@
                     "value": 0.7,
                     "control_method": "value",
                     "load": {
-                        "operation": "(DimmingLevelOutput-0.7)*1438.0",
-                        "equation_args": ["DimmingLevelOutput"]
+                        "operation":  "SUM(Power * (DimmingLevelOutput - 70) / DimmingLevelOutput)",
+                        "equation_args": "LIST(Power, DimmingLevelOutput)"
+                    }
+                },
+                "release_trigger": {
+                    "curtail": {
+                        "condition": [ "OccupancySensor < 1" ],
+                        "device_status_args": [ "OccupancySensor"]
                     }
                 }
             }
@@ -168,7 +185,6 @@
                         "operation_type": "formula",
                         "operation": "AirFlowSetPoint*(100.0/CoolingOutputPercent)",
                         "minimum": 0.0,
-                        "maximum": 100.0,
                         "operation_args": ["AirFlowSetPoint", "CoolingOutputPercent"]
                     },
                 "zonetemperature_setpoint": {
@@ -193,14 +209,14 @@
                     "dict_name": "zone_type"
                 },
                 "lighting_level": {
-                    "operation": "DimmingLevelOutput",
+                    "operation": "AVG(DimmingLevelOutput)",
                     "operation_type": "formula",
-                    "operation_args": ["DimmingLevelOutput"]
+                    "operation_args": "LIST(DimmingLevelOutput)"
                 },
                 "rated_power": {
-                    "operation": "Power*100/DimmingLevelOutput",
+                    "operation": "SUM((Power * 100) / DimmingLevelOutput)",
                     "operation_type": "formula",
-                    "operation_args": ["Power", "DimmingLevelOutput"]
+                    "operation_args": "LIST(Power, DimmingLevelOutput)"
                 }
             }
         },

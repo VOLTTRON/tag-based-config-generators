@@ -102,6 +102,21 @@ class ConfigGenerator(BaseConfigGenerator):
         occ_id, device_addr, device_id = query_occupancy_detector(room_id, self.connection)
         return occ_id
 
+    def get_volttron_point_name(self, reference_point_name, **kwargs):
+        p = kwargs.get("point_name", None)
+        if p:
+            if kwargs.get("equip_type", "unknown") in ["lighting", "occupancy_detector"]:
+                return f"{reference_point_name.split('_')[0]}_{p}"
+            else:
+                return p
+        else:
+            return reference_point_name
+
+    def get_lighting_points(self, room_id, lights, point_name)->list[str]:
+        return [self.get_volttron_point_name(l, point_name=point_name, equip_type="lighting") for
+                l in
+         lights]
+
 def main():
     if len(sys.argv) != 2:
         print("script requires one argument - path to configuration file")
