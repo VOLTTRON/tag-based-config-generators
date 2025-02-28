@@ -497,10 +497,9 @@ class BaseConfigGenerator:
                                                                             equip_type="lighting"))
                         c_list.append(c1)  # condition specific to 1 light
                     if c.startswith("SUM"):
-                        expanded_conditions.append(" + ".join(c_list)[:-1])
+                        expanded_conditions.append(" + ".join(c_list))
                     else:
-                        expanded_conditions.append("(" + " + ".join(c_list)+ f")/{len(lights)}" +
-                                                   ")")
+                        expanded_conditions.append("(" + " + ".join(c_list)+ f")/{len(lights)}" )
                 else:
                     expanded_conditions.append(c)
             updated_conditions = expanded_conditions
