@@ -36,9 +36,9 @@
      # metadata value to identify the specific points and hence its name in this setup
      # Should include all points used in control and criteria configs.
      "point_meta_map": {
-        "power_meter": {
-            "WholeBuildingPower": "ActivePowerSensor"
-            },
+        #"power_meter": {
+        #    "WholeBuildingPower": "ActivePowerSensor"
+        #    },
         "vav": {
             "CoolingOutputPercent": "CoolingOutputPercent",
             "AirFlowSetPoint": "SupplyAirFlowSetpoint",

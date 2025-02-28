@@ -49,8 +49,8 @@ class BaseConfigGenerator:
 
         self.power_meter_id = None
         self.volttron_point_type_building_power = "WholeBuildingPower"
-        self.point_type_building_power = self.point_meta_map["power_meter"][
-            self.volttron_point_type_building_power]
+        self.point_type_building_power = self.point_meta_map.get("power_meter", {}).get(
+            self.volttron_point_type_building_power, "")
 
         # use this dict to give additional details for user to help manually find the issue
         self.unmapped_device_details = dict()
