@@ -110,6 +110,9 @@ class BaseConfigGenerator:
 
         self.generate_ilc_config(device_types)
 
+        if "lighting" in device_types:
+            self.generate_generate_lighting_actuator_config()
+
         et = datetime.datetime.utcnow()
         print(f"Done with config generation. end time is {et} time taken {et-st}")
         if self.config_metadata_dict[self.ilc_agent_vip]:
@@ -121,7 +124,7 @@ class BaseConfigGenerator:
             with open(err_file_name, 'w') as outfile:
                 json.dump(self.unmapped_device_details, outfile, indent=4)
 
-            sys.stderr.write(f"\nUnable to generate configurations for all AHUs and VAVs. "
+            sys.stderr.write(f"\nUnable to generate configurations for all devices. "
                              f"Please see {err_file_name} for details\n")
             sys.exit(1)
         else:
@@ -484,10 +487,11 @@ class BaseConfigGenerator:
             for c in updated_conditions:
                 if c.startswith('AVG(') or c.startswith('SUM('):
                     c_list = []
+                    index_open = 3  # index of open paranthesis
+                    index_close = BaseConfigGenerator.find_closing_parenthesis(c, index_open)
                     for light in lights:
                         # will start with SUM or AVG - only supported methods
-                        index_open = 3 # index of open paranthesis
-                        index_close = BaseConfigGenerator.find_closing_parenthesis(c, index_open)
+
                         c1 = c[4:index_close].strip()
                         if c1.find(' ') > 0:
                             # may be not a single point name but an expression. enclose in ()
@@ -497,9 +501,13 @@ class BaseConfigGenerator:
                                                                             equip_type="lighting"))
                         c_list.append(c1)  # condition specific to 1 light
                     if c.startswith("SUM"):
-                        expanded_conditions.append(" + ".join(c_list))
+                        expanded_sum = "(" + " + ".join(c_list) + ")"
+                        expanded_condition = c.replace(c[0: index_close+1], expanded_sum)
+                        expanded_conditions.append(expanded_condition)
                     else:
-                        expanded_conditions.append("(" + " + ".join(c_list)+ f")/{len(lights)}" )
+                        expanded_avg = "((" + " + ".join(c_list)+ f")/{len(lights)})"
+                        expanded_condition = c.replace(c[0: index_close+1], expanded_avg)
+                        expanded_conditions.append(expanded_condition)
                 else:
                     expanded_conditions.append(c)
             updated_conditions = expanded_conditions
