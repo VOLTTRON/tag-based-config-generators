@@ -294,7 +294,6 @@ class BaseConfigGenerator:
                                                                                    point_mapping)
                                                   }
             elif device_type == "lighting":
-                print(f"volttron_point_types is {volttron_point_types}")
                 room_lights = self.get_lights_by_room()
                 if isinstance(room_lights, dict):
                     iterator = room_lights.items()

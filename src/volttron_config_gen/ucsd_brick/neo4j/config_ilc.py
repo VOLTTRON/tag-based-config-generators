@@ -106,7 +106,7 @@ class ConfigGenerator(BaseConfigGenerator):
         p = kwargs.get("point_name", None)
         if p:
             if kwargs.get("equip_type", "unknown") in ["lighting", "occupancy_detector"]:
-                return f"{reference_point_name.split('_')[0]}_{p}"
+                return f"{p}__{reference_point_name.split('_')[0]}"
             else:
                 return p
         else:

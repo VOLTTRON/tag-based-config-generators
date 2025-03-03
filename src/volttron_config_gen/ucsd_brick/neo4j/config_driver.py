@@ -231,6 +231,7 @@ class ConfigGenerator(BaseConfigGenerator):
                     point_name = r[1]
                     units = r[2]
                     point_type = r[3]
+                    point_type = point_type[0].lower() + point_type[1:]
                     # All Input types - AnalogInput, BinaryInput etc. are NOT writeable
                     writeable = False if point_type.endswith("Input") else True
                     index = r[4].split(":")[1]
@@ -258,7 +259,7 @@ class ConfigGenerator(BaseConfigGenerator):
         p = kwargs.get("point_name", None)
         if p:
             if kwargs.get("equip_type", "unknown") in ["lighting", "occupancy_detector"]:
-                return f"{reference_point_name.split('_')[0]}_{p}"
+                return f"{p}__{reference_point_name.split('_')[0]}"
             else:
                 return p
         else:
