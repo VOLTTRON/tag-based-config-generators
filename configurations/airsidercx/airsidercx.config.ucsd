@@ -1,41 +1,37 @@
  {
-     "metadata": {
-        "connection_params": {
-                "dbname": "myorg_db",
-                "host": "127.0.0.1",
-                "port": 5432,
-                "user": "postgres",
+      "metadata": {
+         "connection_params": {
+                "uri": "neo4j://localhost:7687",
+                "user": "neo4j",
                 "password": "volttron"
-            },
-        "equip_table": "equipment",
-        "point_table": "points"
-        },
-     "site_id": "r:@myorg.dc_dgs.dcps.test_building",
+         }
+     },
+
      # optional. if not provided will be derived from site_id.split('.')[-2]
      #"campus": "dcps",
      # optional. if not provided will be derived from site_id.split('.')[-1]
-     #"building": "test_building",
+     "building": "ucsd",
 
-     # metadata value to identify the specific points and hence its name in this setup
+     # metadata value to indentify the specific points and hence its name in this setup
      "point_meta_map": {
             # fan_status or fan_speedcmd one of the two should be available for airsidercx
-            "fan_status": "s:SaFanCmd",
-            "fan_speedcmd": "s:SaFanSpdCmd",
+            "fan_status": "DischargeAirFlowSensor",
+            "fan_speedcmd": "DischargeAirFlowSensor",
 
-            "zone_reheat": "s:RhtVlvPos",
+            "zone_reheat": "HeatingCommand",
 
             # will raise warning message if no point of this type - zone_damper - is found
-            "zone_damper": "s:DmpCmd",
+            "zone_damper": "HeatingCommand",
 
             # will raise warning message if no point of this type is found
-            "duct_stcpr": "s:SaPress",
+            "duct_stcpr": "DischargeAirStaticPressureSensor",
 
-            "duct_stcpr_stpt": "s:SaPressSp",
-            "sa_temp": "s:SaTemp",
-            "sat_stpt": "s:SaTempSp"
+            "duct_stcpr_stpt": "DischargeAirStaticPressureSetpoint",
+            "sa_temp": "DischargeAirTemperatureSensor",
+            "sat_stpt": "DischargeAirTemperatureSetpoint"
         },
      # The field that contains the above point metadata
-     "point_meta_field": "dis",
+     "point_meta_field": "label",
 
      # optional point default value if no point name can be found using metadata/tags a default value can be provided
      # useful in cases where we know point exists but tagging is incomplete.
@@ -45,7 +41,7 @@
      #   "mixed_air_temperature" : "default_name"
      #},
 
-     "output_dir":"airsidercx_configs_from_db",
+     "output_dir":"ucsd_neo4j_airsidercx_configs",
      "config_template": {
         "analysis_name": "AirsideAIRCx",
         "device": {

@@ -3,6 +3,7 @@ import copy
 import os.path
 import sys
 from abc import abstractmethod
+import datetime
 from volttron_config_gen.utils import strip_comments
 
 
@@ -62,8 +63,6 @@ class BaseConfigGenerator:
         self.point_meta_map = self.config_dict.get("point_meta_map")
         self.point_meta_field = self.config_dict.get("point_meta_field", "miniDis")
         self.point_default_map = self.config_dict.get("point_default_map", dict())
-        # Initialize point mapping for airsidercx config
-        self.point_mapping = {x: "" for x in self.point_meta_map.keys()}
 
     @abstractmethod
     def get_ahus(self):
@@ -74,6 +73,8 @@ class BaseConfigGenerator:
         pass
 
     def generate_configs(self):
+        st = datetime.datetime.utcnow()
+        print(f"Starting generation at {st}")
         config_metadata = dict()
         results = self.get_ahus()
 
@@ -95,7 +96,8 @@ class BaseConfigGenerator:
             config_metafile_name = f"{self.output_dir}/config_metadata.json"
             with open(config_metafile_name, 'w') as f:
                 json.dump(config_metadata, f, indent=4)
-
+        et = datetime.datetime.utcnow()
+        print(f"Done with config generation. end time is {et} time taken {et - st}")
         if self.unmapped_device_details:
             err_file_name = f"{self.output_errors}/unmapped_device_details"
             with open(err_file_name, 'w') as outfile:
@@ -129,19 +131,21 @@ class BaseConfigGenerator:
 
         if missing_points or default_points:
             self.unmapped_device_details[ahu_id] = {"type": "ahu"}
-            if missing_points:
-                self.unmapped_device_details[ahu_id]["error"] = (f"Unable to find points using "
-                                                                 f"metadata field {self.point_meta_field}. "
-                                                                 f"Missing points and their configured mapping: "
-                                                                 f"{missing_points}")
             if default_points:
-                self.unmapped_device_details[ahu_id]["warning"] = (f"Unable to find points using "
-                                                                   f"metadata field {self.point_meta_field} but found "
-                                                                   f"default point names. Using default point names "
-                                                                   f"Missing points and their configured mapping: "
-                                                                   f"{default_points}")
+                self.unmapped_device_details[ahu_id]["warning"] = (
+                    f"Unable to find points using "
+                    f"metadata field {self.point_meta_field} but found "
+                    f"default point names. Using default point names "
+                    f"Missing points and their configured mapping: "
+                    f"{default_points}")
             if self.equip_id_point_topic_map.get(ahu_id):
                 self.unmapped_device_details[ahu_id]["topic_name"] = self.equip_id_point_topic_map.get(ahu_id)
+        if missing_points:
+            self.unmapped_device_details[ahu_id]["error"] = (
+                f"Unable to find points using "
+                f"metadata field {self.point_meta_field}. "
+                f"Missing points and their configured mapping: "
+                f"{missing_points}")
             return ahu, None
         else:
             return ahu, final_config

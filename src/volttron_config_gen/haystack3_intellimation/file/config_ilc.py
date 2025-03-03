@@ -92,7 +92,7 @@ class ConfigGenerator(BaseConfigGenerator):
         return point_name_part
         # return re.split(r"[\.|:]", point_name_part)[-1]
 
-    def get_point_name(self, equip_id, equip_type, volttron_point_type):
+    def get_point_name(self, equip_id, equip_type, volttron_point_type, **kwargs):
         if not self.equip_id_point_map:
             # Load it once and use it from map from next call
             ahus = set()
@@ -106,7 +106,7 @@ class ConfigGenerator(BaseConfigGenerator):
                     continue
                 equip_ref = _d["equipRef"]
                 if equip_ref == self.power_meter_id:
-                    interested_point_types = [self.building_power_point_type,]
+                    interested_point_types = [self.point_type_building_power, ]
                     type = "building power"
                 elif equip_ref in self.vav_dict:
                     interested_point_types = self.point_types_vav
