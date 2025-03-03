@@ -427,7 +427,7 @@ If the haystack tags are parsed from a json file, the metadata value in the abov
         "points_json": "/path/to/json/Sitename_POINTS_haystack.json"
         }
 ```
-Sample configurations can be found [here](configurations/airside_economizer)
+Sample configurations can be found [here](configurations/economizer)
 
 
 ## Running AirsideEconomizer config generator
