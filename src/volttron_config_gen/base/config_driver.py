@@ -136,6 +136,7 @@ class BaseConfigGenerator:
                 iterator = room_lights.items()
             else:
                 iterator = room_lights
+            lights_dict = {self.driver_vip:[]}
             for room_id, lights in iterator:
                 try:
                     occ_detector = self.get_occupancy_detector(room_id)
@@ -153,13 +154,28 @@ class BaseConfigGenerator:
                         "error": f"Unable to get lights details for room  {room_id}. "
                                  f"Exception: {e}"}
                     continue
-                if not result_dict:
+                if not result_dict or not result_dict.get(self.driver_vip):
                     continue  # no valid configs, move to the next room
                 else:
-                    with open(f"{self.output_configs}/{room_name}_lights.json", 'w') as outfile:
-                        json.dump(result_dict, outfile, indent=4)
+                    lights_dict[self.driver_vip].append(result_dict[self.driver_vip])
+
+            if lights_dict[self.driver_vip]:
+                with open(f"{self.output_configs}/all_lights.json", 'w') as outfile:
+                    json.dump(lights_dict, outfile, indent=4)
+
         except ValueError as e:
             self.unmapped_device_details["lights"] = {"error": f"Unable to get lights and room {e}"}
+
+        # Generate driver agent config
+        agent_dict = dict()
+        interval = 60/(self.get_max_device_count_in_group()+1)
+        agent_dict[self.driver_vip] = [
+            {"config-name": "config",
+             "config": {"driver_scrape_interval": interval}
+             }
+        ]
+        with open(f"{self.output_configs}/driver-agent-config.json", 'w') as outfile:
+            json.dump(agent_dict, outfile, indent=4)
 
         # If unmapped devices exists, write additional unmapped_devices.txt that gives more info to user to map manually
         if self.unmapped_device_details:
@@ -235,6 +251,10 @@ class BaseConfigGenerator:
         # Now loop through and do the same for all vavs
         all_points = []
         for light_id in lights:
+            # TODO: Use may be controllerid_ballastid_ as the unique prefix?
+            if light_id.split("_")[0] == "B5B3":
+                print("Skipping lights with balast id B5B3. As this id is not unique")
+                continue
             if driver_config.get("registry_config"):
                 # replace right variables in driver_config_template
                 light_points = self.generate_registry_config_data(light_id, "lighting",
@@ -298,3 +318,6 @@ class BaseConfigGenerator:
         config name returned will be included in driver config as config://<config_name>
         """
         raise NotImplementedError
+
+    def get_max_device_count_in_group(self):
+        return 1
