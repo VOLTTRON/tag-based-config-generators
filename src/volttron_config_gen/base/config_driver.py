@@ -157,7 +157,7 @@ class BaseConfigGenerator:
                 if not result_dict or not result_dict.get(self.driver_vip):
                     continue  # no valid configs, move to the next room
                 else:
-                    lights_dict[self.driver_vip].append(result_dict[self.driver_vip])
+                    lights_dict[self.driver_vip].extend(result_dict[self.driver_vip])
 
             if lights_dict[self.driver_vip]:
                 with open(f"{self.output_configs}/all_lights.json", 'w') as outfile:
