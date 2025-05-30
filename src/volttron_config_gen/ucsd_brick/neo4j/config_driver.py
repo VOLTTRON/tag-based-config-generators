@@ -31,6 +31,8 @@ class ConfigGenerator(BaseConfigGenerator):
                                "electric_meter": defaultdict(dict),
                                "lighting": defaultdict(dict),
                                "occupancy_detector": defaultdict(dict)}
+        self.max_group_vav = 0
+        self.group_device_count = {}
 
     def get_ahu_and_vavs(self):
         ahu_dict = defaultdict(list)
@@ -42,16 +44,24 @@ class ConfigGenerator(BaseConfigGenerator):
             "MATCH "
             "(c1:`Bacnet Controller`)-[:controls]->(a:AHU)-[:feeds]->(v:VAV)<-[:controls]-(c2:`Bacnet Controller`)  "
             "RETURN a.name, c1.`IP Address`, c1.`Device Object Identifier`, "
-            "v.name, c2.`IP Address`, c2.`Device Object Identifier`;"
+            "v.name, v.trunkId, c2.`IP Address`, c2.`Device Object Identifier`;"
         )
         result = self.connection.query(query)
         if result:
             for r in result:
                 ahu_dict[r[0]].append(r[3])
+                grpnum = int(r[4][-1:])
                 self.device_details["ahu"][r[0]]["device_address"]= r[1]
                 self.device_details["ahu"][r[0]]["device_id"] = r[2]
-                self.device_details["vav"][r[3]]["device_address"]= r[4]
-                self.device_details["vav"][r[3]]["device_id"] = r[5]
+                self.device_details["vav"][r[3]]["group"] = grpnum
+                if self.group_device_count.get(grpnum):
+                    self.group_device_count[grpnum] = self.group_device_count[grpnum] + 1
+                else:
+                    self.group_device_count[grpnum] = 1
+                self.max_group_vav = self.max_group_vav if (self.max_group_vav >
+                                                            grpnum) else grpnum
+                self.device_details["vav"][r[3]]["device_address"]= r[5]
+                self.device_details["vav"][r[3]]["device_id"] = r[6]
 
         # 2. Query for ahus without vavs
         # append to result
@@ -93,6 +103,12 @@ class ConfigGenerator(BaseConfigGenerator):
                 if not self.device_details["lighting"].get(r[0]):
                     self.device_details["lighting"][r[0]]["device_address"]= r[2]
                     self.device_details["lighting"][r[0]]["device_id"] = r[3]
+                    grpnum = int(r[3][-1:]) + self.max_group_vav
+                    self.device_details["lighting"][r[0]]["group"] = grpnum
+                    if self.group_device_count.get(grpnum):
+                        self.group_device_count[grpnum] = self.group_device_count[grpnum] + 1
+                    else:
+                        self.group_device_count[grpnum] = 1
         return room_dict
 
     def get_occupancy_detector(self, room_id):
@@ -146,6 +162,10 @@ class ConfigGenerator(BaseConfigGenerator):
         if device_id and device_address:
             driver["driver_config"]["device_address"] = device_address
             driver["driver_config"]["device_id"] = device_id
+            if equip_type =="ahu" or equip_type == "meter":
+                driver["group"] = 0
+            else:
+                driver["group"] = _equip.get("group")
         else:
             if not self.unmapped_device_details.get(equip_id):
                 self.unmapped_device_details[equip_id] = dict()
@@ -264,6 +284,9 @@ class ConfigGenerator(BaseConfigGenerator):
                 return p
         else:
             return reference_point_name
+
+    def get_max_device_count_in_group(self):
+        return max(self.group_device_count.values())
 
 def main():
     if len(sys.argv) != 2:

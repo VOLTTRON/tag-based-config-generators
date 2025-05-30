@@ -251,10 +251,6 @@ class BaseConfigGenerator:
         # Now loop through and do the same for all vavs
         all_points = []
         for light_id in lights:
-            # TODO: Use may be controllerid_ballastid_ as the unique prefix?
-            if light_id.split("_")[0] == "B5B3":
-                print("Skipping lights with balast id B5B3. As this id is not unique")
-                continue
             if driver_config.get("registry_config"):
                 # replace right variables in driver_config_template
                 light_points = self.generate_registry_config_data(light_id, "lighting",
