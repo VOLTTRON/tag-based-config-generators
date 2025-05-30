@@ -214,6 +214,10 @@ class ConfigGenerator(BaseConfigGenerator):
             room_id = kwargs.get("room_id")
             if not room_id:
                 raise ValueError("No room_id provided for equip_type lighting")
+                # TODO: Use may be controllerid_ballastid_ as the unique prefix?
+            if equip_id.split("_")[0] == "B5B3":
+                print("Skipping lights with balast id B5B3. As this id is not unique")
+                return []
             query = (f"MATCH (p:Point)-[isPointOf]->(e:{db_type})-[:hasLocation]->(r:Room) "
                      f"WHERE e.name STARTS WITH $equip_id AND r.name=$room_id "
                      "RETURN p.`BACnet Object Name`, p.name, p.units, p.type, p.`BACnet Object "
