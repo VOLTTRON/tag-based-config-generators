@@ -338,8 +338,10 @@ class BaseConfigGenerator:
                         continue
 
                     # If all necessary points are found go ahead and add it to configs
-                    self.lighting_actuator_config[room_light_topic] = self.get_lighting_points(
-                        room_id, lights, point_mapping['DimmingLevelOutput'])
+                    self.lighting_actuator_config[self.topic_prefix + room_light_topic] = (
+                        self.get_lighting_points(room_id,
+                                                 lights,
+                                                 point_mapping['DimmingLevelOutput']))
                     control_config[room_light_topic] = {
                         room_light_topic: self.update_control_config(config, point_mapping,
                                                                      room_id, lights)}
