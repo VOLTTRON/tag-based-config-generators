@@ -423,7 +423,8 @@ class BaseConfigGenerator:
             value_dict["operation_args"], value_dict["operation"] = self.substitute_point_names(
                 value_dict["operation_args"], value_dict["operation"], point_mapping, room_id,
                 lights)
-
+            if isinstance(value_dict["operation"], list) and len(value_dict["operation"]) == 1:
+                    value_dict["operation"] = value_dict["operation"][0]
         return curtail_config
 
     def substitute_point_names(self, v_args, v_conditions, point_mapping, room_id=None,
