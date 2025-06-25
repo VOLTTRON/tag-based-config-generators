@@ -112,10 +112,9 @@ class ConfigGenerator(BaseConfigGenerator):
         else:
             return reference_point_name
 
-    def get_lighting_points(self, room_id, lights, point_name)->list[str]:
+    def get_lighting_points(self, room_id, devices, point_name)->list[str]:
         return [self.get_volttron_point_name(l, point_name=point_name, equip_type="lighting") for
-                l in
-         lights]
+                l in devices]
 
 def main():
     if len(sys.argv) != 2:

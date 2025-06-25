@@ -316,6 +316,8 @@ class BaseConfigGenerator:
                                                                            room_id=room_id)
                     # add occupancy detector points if available
                     occ_points = [x for x in self.point_meta_map.get("occupancy_detector", [])]
+                    occ_detector = None
+                    occ_mapping = None
                     if occ_points:
                         # if we care about occupancy detector points i.e. if it is in ilc config
                         # template
@@ -344,7 +346,8 @@ class BaseConfigGenerator:
                                                  point_mapping['DimmingLevelOutput']))
                     control_config[room_light_topic] = {
                         room_light_topic: self.update_control_config(config, point_mapping,
-                                                                     room_id, lights)}
+                                                                     room_id, lights,
+                                                                     occ_detector, occ_mapping)}
 
                     criteria_config[room_light_topic] = {
                         room_light_topic: self.update_criteria_config(curtail_config,
@@ -389,12 +392,14 @@ class BaseConfigGenerator:
         return point_mapping, missing_points
 
 
-    def update_control_config(self, config, point_mapping, room_id=None, lights=None):
+    def update_control_config(self, config, point_mapping, room_id=None, lights=None,
+                              occ_detector=None, occ_mapping=None):
         volttron_point = config["curtail_settings"]["point"]
         # For now this is a single point due to ILC limitation
         # work around is the lighting actuator config
         config["curtail_settings"]["point"] = point_mapping[volttron_point]
 
+        ##### operation or conditions in curtail_settings #####
         if isinstance(config["curtail_settings"]["load"], dict):
             args = config["curtail_settings"]["load"]['equation_args']
             v_conditions = [config["curtail_settings"]["load"]["operation"]]
@@ -402,15 +407,33 @@ class BaseConfigGenerator:
                 args, v_conditions, point_mapping, room_id, lights)
             config["curtail_settings"]["load"]["equation_args"] = point_list
             config["curtail_settings"]["load"]["operation"] = updated_conditions[0]
+
+        ##### condition in device_status ####
         # More than 1 curtail possible? should we loop through?
         args = config["device_status"]["curtail"]["device_status_args"]
         v_conditions = config["device_status"]["curtail"]["condition"]
         point_list, updated_conditions = self.substitute_point_names(args, v_conditions,
                                                                      point_mapping, room_id,
                                                                      lights)
-        # replace curtail values with actual point names
+         # replace curtail values with actual point names
         config["device_status"]["curtail"]["device_status_args"] = point_list
         config["device_status"]["curtail"]["condition"] = updated_conditions
+
+        ##### condition in release_trigger ####
+        # TODO handle occ detector in all conditions. Currently used only for release trigger.
+        # Are there conditions that will include both lighting and occ detector points. if we
+        # need pass two separate point mapping and device list and handle both differently
+        if config.get("release_trigger"):
+            args = config["release_trigger"]["curtail"]["device_status_args"]
+            v_conditions = config["release_trigger"]["curtail"]["condition"]
+            print(f"Release trigger points args:{args}  vconditions {v_conditions} point mapping "
+                  f"{point_mapping} roomid {room_id} lights {lights}")
+            point_list, updated_conditions = self.substitute_point_names(args, v_conditions,
+                                                                         occ_mapping, room_id,
+                                                                         [occ_detector])
+             # replace curtail values with actual point names
+            config["release_trigger"]["curtail"]["device_status_args"] = point_list
+            config["release_trigger"]["curtail"]["condition"] = updated_conditions
         return config
 
     def update_criteria_config(self, curtail_config, point_mapping, room_id=None, lights=None):
@@ -428,10 +451,13 @@ class BaseConfigGenerator:
         return curtail_config
 
     def substitute_point_names(self, v_args, v_conditions, point_mapping, room_id=None,
-                               lights=None):
+                               devices=None):
         expand_point_names = False
         volttron_point_list =[]
         point_list = []
+        if devices:
+            # must be light or occ detector
+            expand_point_names = True
 
         # Step1 parse all v_args and collate list of volttron points and points used in conditions
         if isinstance(v_args, dict):
@@ -447,7 +473,6 @@ class BaseConfigGenerator:
             elif isinstance(args, str):
                 if args.startswith("LIST("):
                     vpoint_list = args[5: -1].split(",")
-                    expand_point_names = True
                 else:
                     vpoint_list = [args]
             else:
@@ -459,7 +484,7 @@ class BaseConfigGenerator:
                 volttron_point_list.append(v_point)
                 point_list.append(point_mapping[v_point])
                 if expand_point_names:
-                    args_dict[k].extend(self.get_lighting_points(room_id, lights,
+                    args_dict[k].extend(self.get_lighting_points(room_id, devices,
                                                                  point_mapping[v_point]))
                 else:
                     args_dict[k].append(point_mapping[v_point])
@@ -491,7 +516,7 @@ class BaseConfigGenerator:
                     c_list = []
                     index_open = 3  # index of open paranthesis
                     index_close = BaseConfigGenerator.find_closing_parenthesis(c, index_open)
-                    for light in lights:
+                    for light in devices:
                         # will start with SUM or AVG - only supported methods
 
                         c1 = c[4:index_close].strip()
@@ -507,11 +532,19 @@ class BaseConfigGenerator:
                         expanded_condition = c.replace(c[0: index_close+1], expanded_sum)
                         expanded_conditions.append(expanded_condition)
                     else:
-                        expanded_avg = "((" + " + ".join(c_list)+ f")/{len(lights)})"
+                        expanded_avg = "((" + " + ".join(c_list)+ f")/{len(devices)})"
                         expanded_condition = c.replace(c[0: index_close+1], expanded_avg)
                         expanded_conditions.append(expanded_condition)
                 else:
-                    expanded_conditions.append(c)
+                    # if there is no LIST OR SUM then we are not expanding multiple device point
+                    # into 1 so devices should contain just 1 device
+                    # for now equip type lighting and occ detector behave the same for point name
+                    # parsing
+                    for p in point_list:
+                        expanded_conditions.append(
+                            c.replace(p, self.get_volttron_point_name(devices[0],
+                                                                      point_name=p,
+                                                                      equip_type="lighting")))
             updated_conditions = expanded_conditions
 
         if isinstance(v_args, dict):
