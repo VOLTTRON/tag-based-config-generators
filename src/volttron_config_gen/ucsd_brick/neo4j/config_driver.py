@@ -25,7 +25,8 @@ class ConfigGenerator(BaseConfigGenerator):
 
         self.connection = Neo4jConnection(connect_params["uri"],
                                           connect_params["user"],
-                                          connect_params["password"])
+                                          connect_params["password"],
+                                          connect_params["database"])
         self.device_details = {"ahu": defaultdict(dict),
                                "vav": defaultdict(dict),
                                "electric_meter": defaultdict(dict),

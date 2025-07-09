@@ -426,8 +426,6 @@ class BaseConfigGenerator:
         if config.get("release_trigger"):
             args = config["release_trigger"]["curtail"]["device_status_args"]
             v_conditions = config["release_trigger"]["curtail"]["condition"]
-            print(f"Release trigger points args:{args}  vconditions {v_conditions} point mapping "
-                  f"{point_mapping} roomid {room_id} lights {lights}")
             point_list, updated_conditions = self.substitute_point_names(args, v_conditions,
                                                                          occ_mapping, room_id,
                                                                          [occ_detector])

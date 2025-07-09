@@ -3,7 +3,8 @@
          "connection_params": {
                 "uri": "neo4j://localhost:7687",
                 "user": "neo4j",
-                "password": "volttron"
+                "password": "volttron",
+                "database": "updatedmodel"
          }
      },
      # optional. if not provided will be derived from site_id.split('.')[-2]
