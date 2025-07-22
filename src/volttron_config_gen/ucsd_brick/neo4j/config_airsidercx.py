@@ -18,7 +18,7 @@ class ConfigGenerator(BaseConfigGenerator):
         connect_params = metadata.get("connection_params")
 
         self.connection = Neo4jConnection(connect_params["uri"], connect_params["user"],
-                                          connect_params["password"])
+                                          connect_params["password"], connect_params["database"])
 
         self.point_meta_map = self.config_dict.get("point_meta_map")
         # Use label always

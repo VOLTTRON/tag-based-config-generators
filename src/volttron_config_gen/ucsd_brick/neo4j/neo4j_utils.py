@@ -9,14 +9,15 @@ equip_type_db_label_map = {
 }
 
 class Neo4jConnection:
-    def __init__(self, uri, user, password):
+    def __init__(self, uri, user, password, database=None):
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.database = database
 
     def __del__(self):
         self._driver.close()
 
     def query(self, query, parameters=None):
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             r = session.run(query, parameters)
             return [record for record in r]
 

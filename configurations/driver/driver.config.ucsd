@@ -3,7 +3,8 @@
          "connection_params": {
                 "uri": "neo4j://localhost:7687",
                 "user": "neo4j",
-                "password": "volttron"
+                "password": "volttron",
+                "database": "toupdate"
          }
      },
 
@@ -33,8 +34,9 @@
                           },
         "driver_type": "bacnet",
         "registry_config":"config://registry_configs/vav.csv",
-        "interval": 5,
+        "interval": 60,
         "timezone": "UTC",
-        "heart_beat_point": "heartbeat"
+        "heart_beat_point": "heartbeat",
+        "group": 0
     }
  }

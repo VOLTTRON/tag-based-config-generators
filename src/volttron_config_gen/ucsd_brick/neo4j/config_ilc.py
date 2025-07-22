@@ -22,7 +22,7 @@ class ConfigGenerator(BaseConfigGenerator):
         connect_params = metadata.get("connection_params")
 
         self.connection = Neo4jConnection(connect_params["uri"], connect_params["user"],
-                                          connect_params["password"])
+                                          connect_params["password"], connect_params["database"])
         self.vav_ahu_list = list()
         self.equip_point_label_name_map = dict()
 
@@ -106,16 +106,15 @@ class ConfigGenerator(BaseConfigGenerator):
         p = kwargs.get("point_name", None)
         if p:
             if kwargs.get("equip_type", "unknown") in ["lighting", "occupancy_detector"]:
-                return f"{reference_point_name.split('_')[0]}_{p}"
+                return f"{p}__{reference_point_name.split('_')[0]}"
             else:
                 return p
         else:
             return reference_point_name
 
-    def get_lighting_points(self, room_id, lights, point_name)->list[str]:
+    def get_lighting_points(self, room_id, devices, point_name)->list[str]:
         return [self.get_volttron_point_name(l, point_name=point_name, equip_type="lighting") for
-                l in
-         lights]
+                l in devices]
 
 def main():
     if len(sys.argv) != 2:
