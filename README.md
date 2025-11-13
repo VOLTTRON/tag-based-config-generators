@@ -3,7 +3,7 @@ This repository contains code for generating VOLTTRON agent configurations based
 
 
 # Architecture
-The configuration generator uses a extensible architecture where all agent configuration generators are built on a base generator. This base generator is extended with model-specific and storage-specific implementations. 
+The configuration generator uses an extensible architecture where all agent configuration generators are built on a base generator. This base generator is extended with model-specific and storage-specific implementations. 
 
 For example, for a driver config generator, we have two model-specific packages—one for Haystack3 and one for BRICK—and within Haystack3, there are two storage-specific implementations: one for working with data stored in PostgreSQL databases and another for JSON files. The source code structure follows the same pattern. 
 This design makes it easy to add support for new semantic models or storage systems in the future.
@@ -17,7 +17,7 @@ This design makes it easy to add support for new semantic models or storage syst
 1. BRICK 
 2. Haystack3 
 
-### Currently generate configurators are available for VOLTTRON agents 
+### Currently configuration generators are available for VOLTTRON agents 
 
 1. Platform Driver Agent 
 2. AirsideRCx Agent
@@ -68,7 +68,7 @@ This design makes it easy to add support for new semantic models or storage syst
    ```
    poetry install
    ```
-4. Install optional packages specific to your semantic data source
+4. Install optional packages specific to your semantic model's data source/storage
 	  - For example, If your haystack tags are stored in postgresql database, you need to install python postgresql connector
 		   ```
 		   pip install psycopg2
@@ -82,20 +82,20 @@ This design makes it easy to add support for new semantic models or storage syst
     The entry point to all the config generator is a single command "volttron-config-gen" which accepts four parameters
     - the semantic model
     - the data store
-    - the agent for which we want to generate the configuration and 
+    - the agent for which configuration should be generated 
     - the configuration file specific to the generator itself
+    Example
     ```
     volttron-confi-gen ucsd_brick neo4j driver configurations/driver/driver.config.ucsd
     ```
    
 7. Output:
          1. Generated config files will be in the path provided in configuration. 
-         2. Relative path is relative to the directory from which the command is run. 
+         2. Relative path are resolved relative to the directory from which the command is run. 
          3. If no output path is provided in configuration file, then by default output gets written to 
             ```<execution directory>/<site name>_<config type>_configs```. For example, driver configs will be in ```<execution directory>/<site name>_driver_configs```
          4. Details of all devices that couldn't be processed will be in the errors subdirectory
    
-
 
 # Configuration for DriverConfigGenerator
 The configuration file for this config generator script consists of four types of data
