@@ -1,0 +1,17 @@
+{
+     "curtail": {
+         "zonetemperature_setpoint": {
+             "room_type": 6.0,
+             "available_zone_airflow_ratio": 2.0,
+             "box_size": 1.0
+         },
+         "room_type": {
+             "available_zone_airflow_ratio": 0.3,
+             "box_size": 0.17
+         },
+         "available_zone_airflow_ratio": {
+             "box_size": 0.5
+         },
+         "box_size": {}
+     }
+}

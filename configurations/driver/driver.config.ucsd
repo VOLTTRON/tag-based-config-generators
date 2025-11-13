@@ -1,0 +1,42 @@
+ {
+     "metadata": {
+         "connection_params": {
+                "uri": "neo4j://localhost:7687",
+                "user": "neo4j",
+                "password": "volttron",
+                "database": "toupdate"
+         }
+     },
+
+     # Optional campus. defaults to empty
+     # "campus": "",
+
+     # Optional building or site name. defaults to empty
+     "building": "ucsd",
+
+     # optional driver topic_prefix. By default devices/<campus>/<building/site>/<device>/<subdevice>,
+     # if campus and building information is not provided through site id, campus, building, or topic_prefix then
+     # topic would be of the format devices/<device>/<subdevice>
+     #"topic_prefix": "devices/campus1/building1",
+
+     # Optional. where generated configs should be saved. Code will try to do makedir -p
+     #"output_dir":"/path/to/output/dir",
+
+     # Optional. vip id of the platform driver agent. defaults to platform.driver
+     #"driver_vip":"platform.driver",
+
+     # Template for driver configuration
+     "config_template": {
+        "driver_config": {"device_address": "10.1.1.3",
+                          "device_id": 500,
+                          "min_priority": 10,
+                          "max_per_request": 24
+                          },
+        "driver_type": "bacnet",
+        "registry_config":"config://registry_configs/vav.csv",
+        "interval": 60,
+        "timezone": "UTC",
+        "heart_beat_point": "heartbeat",
+        "group": 0
+    }
+ }
