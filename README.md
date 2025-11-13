@@ -8,9 +8,9 @@ The configuration generator uses a extensible architecture where all agent confi
 For example, for a driver config generator, we have two model-specific packages—one for Haystack3 and one for BRICK—and within Haystack3, there are two storage-specific implementations: one for working with data stored in PostgreSQL databases and another for JSON files. The source code structure follows the same pattern. 
 This design makes it easy to add support for new semantic models or storage systems in the future.
 
-![Architecture](architecture.jpeg)
+![Architecture](architecture.jpg)
 
-![Code structure](code-structure.jpeg)
+![Code structure](code-structure.jpg)
 
 
 ### Currently there are reference implementations based on 
