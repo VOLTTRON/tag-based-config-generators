@@ -4,6 +4,7 @@ import os.path
 import sys
 from abc import abstractmethod
 import datetime
+import time
 from volttron_config_gen.utils import strip_comments
 
 
@@ -73,7 +74,8 @@ class BaseConfigGenerator:
         pass
 
     def generate_configs(self):
-        st = datetime.datetime.utcnow()
+        st = datetime.datetime.now(datetime.timezone.utc)
+        started = time.perf_counter()
         print(f"Starting generation at {st}")
         config_metadata = dict()
         results = self.get_ahus()
@@ -96,8 +98,8 @@ class BaseConfigGenerator:
             config_metafile_name = f"{self.output_dir}/config_metadata.json"
             with open(config_metafile_name, 'w') as f:
                 json.dump(config_metadata, f, indent=4)
-        et = datetime.datetime.utcnow()
-        print(f"Done with config generation. end time is {et} time taken {et - st}")
+        et = datetime.datetime.now(datetime.timezone.utc)
+        print(f"Done with config generation. end time is {et} time taken {datetime.timedelta(seconds=time.perf_counter() - started)}")
         if self.unmapped_device_details:
             err_file_name = f"{self.output_errors}/unmapped_device_details"
             with open(err_file_name, 'w') as outfile:
